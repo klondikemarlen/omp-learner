@@ -1,0 +1,67 @@
+{
+  "cases": [
+    {
+      "id": "accepted-commit-message-style",
+      "input": "Please stop using vague commit messages like 'fix stuff'; name the failing behavior and the observable outcome.",
+      "expectedCategory": "commit_message_style",
+      "expectedAction": "pending_candidate",
+      "provenanceRequired": false
+    },
+    {
+      "id": "accepted-test-style",
+      "input": "For tests, assert the expected catalog values directly instead of deriving them from the same production helper.",
+      "expectedCategory": "test_style",
+      "expectedAction": "pending_candidate",
+      "provenanceRequired": false
+    },
+    {
+      "id": "rejected-noisy-local-nit",
+      "input": "In this one PR body, use the word tiny instead of small.",
+      "expectedCategory": "one_off_no_action",
+      "expectedAction": "no_candidate",
+      "provenanceRequired": false
+    },
+    {
+      "id": "wrong-scope-project-style",
+      "input": "Only the WRAP repo should call these serializers presenters, do not make this global.",
+      "expectedCategory": "project_code_style",
+      "expectedAction": "pending_candidate",
+      "feedbackLabel": "wrong-scope",
+      "provenanceRequired": false
+    },
+    {
+      "id": "wrong-destination-workflow",
+      "input": "This belongs in the shared commit workflow, not AGENTS.md.",
+      "expectedCategory": "workflow_or_tooling",
+      "expectedAction": "pending_candidate",
+      "feedbackLabel": "wrong-destination",
+      "provenanceRequired": false
+    },
+    {
+      "id": "verifier-overlap",
+      "input": "You cannot call this PASS because the browser smoke test never ran.",
+      "expectedCategory": "one_off_no_action",
+      "expectedAction": "no_candidate",
+      "rationale": "Verifier owns completion evidence and PASS/FAIL/BLOCKED review.",
+      "provenanceRequired": false
+    },
+    {
+      "id": "insufficient-context-commit-grouping-negative",
+      "input": "Split the docs and test fix into separate commits; no diff or staged files were visible in this chat.",
+      "expectedCategory": "insufficient_context",
+      "expectedAction": "no_candidate",
+      "provenanceRequired": true
+    },
+    {
+      "id": "accepted-commit-grouping-with-diff",
+      "input": "Split package lockfile churn from the behavior change.",
+      "expectedCategory": "commit_file_grouping",
+      "expectedAction": "pending_candidate",
+      "provenance": {
+        "kind": "diff",
+        "reference": "git diff --cached --stat showed package-lock.json and src/server/auth.ts"
+      },
+      "provenanceRequired": true
+    }
+  ]
+}

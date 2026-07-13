@@ -1,0 +1,25 @@
+{
+  "name": "omp-learner",
+  "version": "0.1.0",
+  "description": "OMP learner plugin for conservative durable-feedback triage.",
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/verify-learner.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/klondikemarlen/omp-learner.git"
+  },
+  "keywords": ["omp-plugin", "learner"],
+  "files": [
+    "docs/",
+    "omp-plugin/",
+    "scripts/"
+  ],
+  "omp": {
+    "extensions": ["./omp-plugin/index.ts"]
+  },
+  "pi": {
+    "extensions": ["./omp-plugin/index.ts"]
+  }
+}

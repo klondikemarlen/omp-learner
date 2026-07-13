@@ -148,7 +148,7 @@ try {
   assert.equal(search.details.searchId, 'search-1');
   assert.deepEqual(ghCalls[0].slice(0, 6), ['issue', 'list', '--repo', 'owner/updated', '--state', 'open']);
   assert.ok(!ghCalls[0].includes('--search'));
-  assert.equal(ghCalls[0][ghCalls[0].indexOf('--limit') + 1], '100');
+  assert.equal(ghCalls[0][ghCalls[0].indexOf('--limit') + 1], '1000');
   const created = await issueTool.execute('issue-1', fileParams(candidate, search.details.searchId));
   assert.equal(created.details.created, true);
   assert.equal(filed[0], 'https://github.com/owner/updated/issues/1');
@@ -190,6 +190,24 @@ try {
   assert.equal(reused.details.created, false);
   assert.equal(reused.details.url, 'https://github.com/owner/updated/issues/42');
   assert.equal(reuseCalls.length, 1);
+  const largeIssues = Array.from({ length: 100 }, (_, index) => ({
+    number: index + 1,
+    title: index === 99 ? 'Ledger transaction retries' : `Unrelated open issue ${index + 1} ${'x'.repeat(280)}`,
+    body: 'y'.repeat(500),
+    url: `https://github.com/owner/updated/issues/${index + 1}`,
+  }));
+  const { searchTool: boundedSearchTool, issueTool: boundedIssueTool } = createLearnerIssueTools({
+    upstream: 'owner/updated',
+    agentDir,
+    z,
+    runGh: async () => JSON.stringify(largeIssues),
+  });
+  const boundedSearch = await boundedSearchTool.execute('search-bounded', searchParams(candidate));
+  assert.ok(boundedSearch.content[0].text.length <= 16_000);
+  assert.match(boundedSearch.content[0].text, /\[Truncated: \d+ open issue summaries omitted/);
+  assert.ok(boundedSearch.content[0].text.indexOf('#100 Ledger transaction retries') < boundedSearch.content[0].text.indexOf('#1 Unrelated open issue 1'));
+  assert.ok(boundedSearch.details.issueCount < 100);
+  await assert.rejects(boundedIssueTool.execute('issue-bounded', fileParams(candidate, boundedSearch.details.searchId, { existingIssueNumber: '99' })), /was not returned/);
 
   const unrelatedCalls = [];
   const { searchTool: unrelatedSearchTool, issueTool: unrelatedIssueTool } = createLearnerIssueTools({

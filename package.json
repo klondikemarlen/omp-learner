@@ -1,7 +1,7 @@
 {
   "name": "omp-learner",
-  "version": "0.1.0",
-  "description": "OMP learner plugin for conservative durable-feedback triage.",
+  "version": "0.2.0",
+  "description": "Persistent OMP learner watchdog configuration.",
   "type": "module",
   "scripts": {
     "test": "node scripts/verify-learner.mjs"
@@ -12,7 +12,6 @@
   },
   "keywords": ["omp-plugin", "learner"],
   "files": [
-    "docs/",
     "omp-plugin/",
     "scripts/"
   ],

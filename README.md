@@ -1,32 +1,79 @@
 # OMP Learner
 
-OMP Learner configures an independent OMP advisor that watches future sessions for explicit, durable user feedback about shared code style, tests, commits, and workflows.
+OMP Learner is an independent, non-blocking watchdog for explicit durable feedback and project-domain knowledge. It turns high-confidence findings into deduplicated GitHub issues in a configured upstream repository for human review.
+
+## Install
+
+```bash
+omp plugin install github:klondikemarlen/omp-learner
+```
+
+Restart OMP after installing or reinstalling so a fresh session discovers the extension.
 
 ## Setup
 
-Run this once after the OMP advisor model role is configured:
 
 ```text
 /learner setup https://github.com/owner/shared-guidance
 ```
 
-Setup validates that the upstream repository is accessible and has GitHub Issues enabled, then persists:
+Setup validates that the repository is accessible and has GitHub Issues enabled, then persists its normalized name and enabled state in:
 
-- the enabled state and normalized upstream repository in `~/.omp/agent/learner/config.json`;
-- a learner advisor entry in `~/.omp/agent/WATCHDOG.yml`, preserving existing advisors such as `omp-verifier`;
-- `advisor.enabled: true` in the OMP global configuration.
+```text
+~/.omp/agent/learner/config.json
+```
 
-Restart OMP after setup. The read-only learner watchdog is active in future sessions until `/learner off` removes only its managed advisor entry.
+It does not modify OMP's advisor roster or global configuration. It takes effect for the next completed primary-agent turn; no restart or `modelRoles.advisor` configuration is required.
 
-## GitHub issue boundary
+## Release and install verification
 
-The upstream repository is stored now for the future ticket workflow. Current OMP advisors can use only built-in tools; they cannot invoke extension tools. OMP Learner therefore **does not file GitHub issues yet**. Granting the advisor `bash` to run `gh issue create` would give it unrestricted, unapproved shell access, so this package deliberately refuses that unsafe workaround.
+After a release is merged to `main` and reachable on GitHub:
 
-The watchdog instead surfaces a high-confidence proposal through OMP's advisor channel for human review. It never opens pull requests, edits files, commits, pushes, changes memory, or blocks the primary agent.
+```bash
+omp plugin install github:klondikemarlen/omp-learner --force
+omp plugin list --json
+```
 
-GitHub authentication is delegated to the existing `gh` CLI login during setup. OMP Learner never stores a GitHub token.
+Confirm the listing contains an enabled `omp-learner` entry with `./omp-plugin/index.ts`, then reload the plugin if OMP supports it or restart OMP. In the fresh session, run:
 
-## Verification
+```text
+/learner status
+```
+
+Do not claim a release is installed until that command is available from the reinstalled plugin.
+
+## Runtime and security boundary
+
+After a completed primary-agent turn, the plugin starts an isolated OMP `AgentSession` using the current model. The session receives a bounded, redacted transcript and can activate only:
+
+```text
+read
+grep
+glob
+learner_file_issue
+```
+
+`learner_file_issue` can create at most one issue per learner run. It has a fixed upstream repository, rechecks that learner filing remains enabled, fingerprints candidate guidance, and looks for an existing open issue before creating one. Created issues identify the proposed guidance, category, scope, high confidence, visible provenance, and redacted evidence. The learner cannot use `bash`, edit files, commit, push, open pull requests, change memory, or block the primary agent.
+
+GitHub authentication is delegated to the existing `gh` CLI login. OMP Learner never persists a GitHub token, transcript, or candidate history; it retains only the enabled flag and normalized upstream repository.
+
+## Knowledge-base builder
+
+In addition to code-style, test, commit, and workflow guidance, the learner captures explicit, stable project-domain facts as `project_knowledge` proposals. The upstream issue tracker is therefore a reviewable knowledge backlog: maintainers can turn accepted issues into the repository's documentation, rules, skills, or other durable project guidance.
+
+The learner does not treat all conversation as knowledge and does not write knowledge files automatically. It ignores routine requests, verifier evidence, PASS/FAIL/BLOCKED feedback, one-off wording changes, and uncertain claims.
+
+### Librarian integration
+
+The native bundled `librarian` task agent does **not** yet consume this upstream knowledge automatically. OMP exposes bundled task-agent profiles to the primary `task` tool, but it does not expose an extension API that can launch or augment a specific profile from an automatic watcher. This plugin therefore does not overwrite the user's `librarian` profile or inject upstream context into unrelated agents.
+
+When OMP exposes extension-owned task spawning and profile-aware prompt/tool augmentation, the learner can become a native, Hub-visible knowledge-aware subagent. Until then, use accepted upstream issues as the canonical review boundary.
+
+## Disable and verify
+
+```text
+/learner off
+```
 
 ```bash
 npm test

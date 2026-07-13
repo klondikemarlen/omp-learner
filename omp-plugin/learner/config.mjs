@@ -3,9 +3,10 @@ import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 
-const CONFIG_VERSION = 2;
+const CONFIG_VERSION = 3;
 const LEARNER_DIR = 'learner';
 const WATCHDOG_FILE = 'WATCHDOG.yml';
+const WATCHDOG_INSTRUCTIONS_FILE = 'WATCHDOG.md';
 const MARKER_START = '# omp-learner: begin';
 const MARKER_END = '# omp-learner: end';
 
@@ -35,38 +36,14 @@ export function normalizeUpstream(value) {
 export function configureLearner(agentDir, upstreamUrl, { verifyUpstream: validateUpstream = verifyUpstream } = {}) {
   const normalizedUpstream = normalizeUpstream(upstreamUrl);
   const upstream = validateUpstream(normalizedUpstream) || normalizedUpstream;
-  const configPath = path.join(agentDir, 'config.yml');
-  const currentConfig = readOptional(configPath);
-  if (!hasAdvisorModel(currentConfig)) throw new Error('OMP modelRoles.advisor must be configured before learner setup.');
-
-  const watchdogPath = path.join(agentDir, WATCHDOG_FILE);
-  const currentWatchdog = readOptional(watchdogPath);
-  const nextWatchdog = withLearnerAdvisor(currentWatchdog, agentDir);
-  const nextConfig = withAdvisorEnabled(currentConfig);
-
-  writeText(configPath, nextConfig, 0o600);
-  writeText(watchdogPath, nextWatchdog, 0o600);
+  removeLegacyAdvisor(agentDir);
   writeConfiguration(agentDir, { version: CONFIG_VERSION, enabled: true, upstream });
-  writeText(path.join(agentDir, LEARNER_DIR, 'WATCHDOG.md'), watchdogInstructions(agentDir), 0o600);
-
-  return { upstream, configPath: configurationPath(agentDir), watchdogPath };
+  return { upstream, configPath: configurationPath(agentDir) };
 }
 
 export function disableLearner(agentDir) {
-  const configuration = readConfiguration(agentDir);
-  writeConfiguration(agentDir, { ...configuration, enabled: false });
-
-  const watchdogPath = path.join(agentDir, WATCHDOG_FILE);
-  if (!existsSync(watchdogPath)) return;
-
-  const nextWatchdog = withoutLearnerAdvisor(readOptional(watchdogPath));
-  if (nextWatchdog.trim() === 'advisors:') rmSync(watchdogPath);
-  else writeText(watchdogPath, nextWatchdog, 0o600);
-}
-
-export function watchdogInstructions(agentDir) {
-  const configuration = readConfiguration(agentDir);
-  return `# OMP Learner watchdog\n\nYou are an independent, non-blocking learner watchdog. The configured upstream repository is ${configuration.upstream}.\n\nReview completed turns only for explicit, durable user feedback about code style, test style, commit message style, commit file grouping, or reusable workflow/tooling guidance. Stay silent for ordinary task requests, verifier evidence, PASS/FAIL/BLOCKED feedback, one-off wording edits, and uncertain feedback.\n\nWhen feedback is high confidence, reusable, and has sufficient visible provenance, use advise with severity nit to identify the proposed issue for human review. Commit file grouping requires a visible diff, staged files, commit hash, or local COMMITTING.md. Do not file GitHub issues: OMP advisors cannot call extension tools safely. Never open pull requests, edit files, commit, push, change memory, or block the primary task.\n`;
+  writeConfiguration(agentDir, { ...readConfiguration(agentDir), enabled: false });
+  removeLegacyAdvisor(agentDir);
 }
 
 function verifyUpstream(upstream) {
@@ -83,8 +60,16 @@ function writeConfiguration(agentDir, configuration) {
   writeText(configurationPath(agentDir), `${JSON.stringify(configuration, null, 2)}\n`, 0o600);
 }
 
-function readOptional(filePath) {
-  return existsSync(filePath) ? readFileSync(filePath, 'utf8') : '';
+function removeLegacyAdvisor(agentDir) {
+  const watchdogPath = path.join(agentDir, WATCHDOG_FILE);
+  if (existsSync(watchdogPath)) {
+    const currentWatchdog = readFileSync(watchdogPath, 'utf8');
+    const nextWatchdog = currentWatchdog.replace(new RegExp(`\\n?${MARKER_START}[\\s\\S]*?${MARKER_END}\\n?`, 'g'), '').replace(/\n{3,}/g, '\n\n');
+    if (nextWatchdog.trim() === 'advisors:') rmSync(watchdogPath);
+    else if (nextWatchdog !== currentWatchdog) writeText(watchdogPath, nextWatchdog, 0o600);
+  }
+  const instructionsPath = path.join(agentDir, LEARNER_DIR, WATCHDOG_INSTRUCTIONS_FILE);
+  if (existsSync(instructionsPath) && readFileSync(instructionsPath, 'utf8').startsWith('# OMP Learner watchdog\n')) rmSync(instructionsPath);
 }
 
 function writeText(filePath, content, mode) {
@@ -92,61 +77,4 @@ function writeText(filePath, content, mode) {
   const temporaryPath = `${filePath}.${process.pid}.tmp`;
   writeFileSync(temporaryPath, content, { mode });
   renameSync(temporaryPath, filePath);
-}
-
-function hasAdvisorModel(config) {
-  return sectionLines(config, 'modelRoles').some((line) => /^\s*advisor\s*:\s*(?!#)\S/.test(line));
-}
-
-function withAdvisorEnabled(config) {
-  const lines = config ? config.split('\n') : [];
-  const section = sectionRange(lines, 'advisor');
-  if (!section) return `${config.replace(/\s*$/, '')}\n${config.trim() ? '\n' : ''}advisor:\n  enabled: true\n`;
-
-  const enabledIndex = lines.slice(section.start + 1, section.end).findIndex((line) => /^\s+enabled\s*:/.test(line));
-  if (enabledIndex >= 0) lines[section.start + 1 + enabledIndex] = '  enabled: true';
-  else lines.splice(section.start + 1, 0, '  enabled: true');
-  return `${lines.join('\n').replace(/\s*$/, '')}\n`;
-}
-
-function withLearnerAdvisor(watchdog, agentDir) {
-  const base = withoutLearnerAdvisor(watchdog).replace(/\s*$/, '') || 'advisors:';
-  if (/^advisors:\s*\[\s*\]\s*$/m.test(base)) throw new Error('Existing WATCHDOG.yml has an inline advisors list; learner setup will not overwrite it.');
-
-  const lines = base.split('\n');
-  const section = sectionRange(lines, 'advisors');
-  if (!section) throw new Error('Existing WATCHDOG.yml has no block-style advisors list; learner setup will not overwrite it.');
-
-  lines.splice(section.end, 0, '', ...learnerAdvisorBlock(agentDir), '');
-  return `${lines.join('\n').replace(/\s*$/, '')}\n`;
-}
-
-function learnerAdvisorBlock(agentDir) {
-  return [
-    MARKER_START,
-    '  - name: learner',
-    '    tools: [read, grep, glob]',
-    '    instructions: |',
-    `      @${path.join(agentDir, LEARNER_DIR, 'WATCHDOG.md')}`,
-    MARKER_END,
-  ];
-}
-
-function withoutLearnerAdvisor(watchdog) {
-  const expression = new RegExp(`\\n?${MARKER_START}[\\s\\S]*?${MARKER_END}\\n?`, 'g');
-  return watchdog.replace(expression, '').replace(/\n{3,}/g, '\n\n');
-}
-
-function sectionLines(config, name) {
-  const lines = config.split('\n');
-  const section = sectionRange(lines, name);
-  return section ? lines.slice(section.start + 1, section.end) : [];
-}
-
-function sectionRange(lines, name) {
-  const start = lines.findIndex((line) => new RegExp(`^${name}:\\s*$`).test(line));
-  if (start < 0) return null;
-
-  const end = lines.findIndex((line, index) => index > start && /^\S/.test(line));
-  return { start, end: end < 0 ? lines.length : end };
 }

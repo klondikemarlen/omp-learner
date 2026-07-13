@@ -51,6 +51,7 @@ try {
   const instructions = readFileSync(path.join(agentDir, 'learner', 'WATCHDOG.md'), 'utf8');
   assert.match(instructions, /configured upstream repository is owner\/repository/);
   assert.match(instructions, /Do not file GitHub issues/);
+  assert.match(instructions, /use advise with severity nit/);
 
   configureLearner(agentDir, 'https://github.com/owner/updated', setupOptions);
   const updatedRoster = readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8');

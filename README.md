@@ -50,10 +50,11 @@ After a completed primary-agent turn, the plugin starts an isolated OMP `AgentSe
 read
 grep
 glob
+learner_search_issues
 learner_file_issue
 ```
 
-`learner_file_issue` can create at most one issue per learner run. It has a fixed upstream repository, rechecks that learner filing remains enabled, fingerprints candidate guidance, and looks for an existing open issue before creating one. Created issues identify the proposed guidance, category, scope, high confidence, visible provenance, and redacted evidence. The learner cannot use `bash`, edit files, commit, push, open pull requests, change memory, or block the primary agent.
+`learner_search_issues` retrieves a bounded, redacted snapshot of open issues from the fixed upstream repository. The learner must review that snapshot before it can file. It reuses a selected materially equivalent issue when one exists; unrelated results do not suppress a distinct proposal. `learner_file_issue` can create at most one issue per learner run and keeps a final fingerprint lookup as an exact-match/race-safe backstop. Created issues identify the proposed guidance, category, scope, high confidence, visible provenance, and redacted evidence. The learner cannot use `bash`, edit files, commit, push, open pull requests, change memory, or block the primary agent.
 
 GitHub authentication is delegated to the existing `gh` CLI login. OMP Learner never persists a GitHub token, transcript, or candidate history; it retains only the enabled flag and normalized upstream repository.
 

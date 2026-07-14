@@ -11,35 +11,31 @@ const agentDir = mkdtempSync(path.join(os.tmpdir(), 'omp-learner-check-'));
 const z = { string: () => ({ optional: () => ({}) }), enum: (values) => ({ values }), object: (shape) => ({ shape }) };
 try {
   const verifierRoster = `# omp-verifier: generated\nadvisors:\n  - name: default\n    tools: [read, grep, glob]\n\ninstructions: |\n  Keep advice concise.\n`;
-  const setupOptions = { verifyUpstream: () => {} };
   writeFileSync(path.join(agentDir, 'config.yml'), 'modelRoles:\n  advisor: openai/gpt-5\nadvisor:\n  enabled: false\n');
   writeFileSync(path.join(agentDir, 'WATCHDOG.yml'), verifierRoster);
 
   assert.equal(normalizeUpstream('https://github.com/owner/repository.git'), 'owner/repository');
   assert.throws(() => normalizeUpstream('owner/repository'), /HTTPS GitHub repository URL/);
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.deepEqual(manifest.omp.settings.knowledgeBaseUrl, {
+    type: 'string',
+    default: '',
+    description: 'Optional HTTPS GitHub repository URL that may receive shared Learner guidance.',
+  });
   const linuxLauncher = resolveParentDeathLauncher({ platform: 'linux', architecture: 'x64', parentPid: 42, args: ['issue', 'list'] });
   assert.match(linuxLauncher.command, /omp-learner-pdeath-linux-x64$/);
   assert.deepEqual(linuxLauncher.args, ['42', 'gh', 'issue', 'list']);
   assert.deepEqual(resolveParentDeathLauncher({ platform: 'darwin', architecture: 'arm64', parentPid: 42, args: ['issue', 'list'] }), { command: 'gh', args: ['issue', 'list'] });
 
   const noModelAgentDir = mkdtempSync(path.join(os.tmpdir(), 'omp-learner-no-model-'));
-  assert.equal(configureLearner(noModelAgentDir, 'https://github.com/owner/repository', setupOptions).upstream, 'owner/repository');
+  assert.equal(configureLearner(noModelAgentDir).configPath, configurationPath(noModelAgentDir));
+  writeFileSync(configurationPath(noModelAgentDir), JSON.stringify({ version: 3, enabled: true, upstream: 'owner/legacy' }));
+  assert.deepEqual(readConfiguration(noModelAgentDir), { version: 4, enabled: true });
   rmSync(noModelAgentDir, { recursive: true, force: true });
 
-  const inaccessibleAgentDir = mkdtempSync(path.join(os.tmpdir(), 'omp-learner-inaccessible-'));
-  writeFileSync(path.join(inaccessibleAgentDir, 'config.yml'), 'modelRoles:\n  advisor: openai/gpt-5\n');
-  writeFileSync(path.join(inaccessibleAgentDir, 'WATCHDOG.yml'), verifierRoster);
-  const inaccessibleConfig = readFileSync(path.join(inaccessibleAgentDir, 'config.yml'), 'utf8');
-  const inaccessibleRoster = readFileSync(path.join(inaccessibleAgentDir, 'WATCHDOG.yml'), 'utf8');
-  assert.throws(() => configureLearner(inaccessibleAgentDir, 'https://github.com/owner/repository', { verifyUpstream: () => { throw new Error('repository unavailable'); } }), /repository unavailable/);
-  assert.equal(readFileSync(path.join(inaccessibleAgentDir, 'config.yml'), 'utf8'), inaccessibleConfig);
-  assert.equal(readFileSync(path.join(inaccessibleAgentDir, 'WATCHDOG.yml'), 'utf8'), inaccessibleRoster);
-  assert.ok(!existsSync(configurationPath(inaccessibleAgentDir)));
-  rmSync(inaccessibleAgentDir, { recursive: true, force: true });
-
-  const configured = configureLearner(agentDir, 'https://github.com/owner/repository', setupOptions);
-  assert.equal(configured.upstream, 'owner/repository');
-  assert.deepEqual(readConfiguration(agentDir), { version: 3, enabled: true, upstream: 'owner/repository' });
+  const configured = configureLearner(agentDir);
+  assert.equal(configured.configPath, configurationPath(agentDir));
+  assert.deepEqual(readConfiguration(agentDir), { version: 4, enabled: true });
   assert.equal(statSync(configurationPath(agentDir)).mode & 0o777, 0o600);
   assert.match(readFileSync(path.join(agentDir, 'config.yml'), 'utf8'), /advisor:\n  enabled: false/);
   assert.equal(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), verifierRoster);
@@ -47,7 +43,7 @@ try {
   const legacyRoster = `${verifierRoster}\n# omp-learner: begin\n  - name: learner\n# omp-learner: end\n`;
   writeFileSync(path.join(agentDir, 'WATCHDOG.yml'), legacyRoster);
   writeFileSync(path.join(agentDir, 'learner', 'WATCHDOG.md'), '# OMP Learner watchdog\nlegacy');
-  configureLearner(agentDir, 'https://github.com/owner/updated', setupOptions);
+  configureLearner(agentDir);
   assert.doesNotMatch(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /# omp-learner: begin/);
   assert.ok(!existsSync(path.join(agentDir, 'learner', 'WATCHDOG.md')));
 
@@ -76,6 +72,10 @@ try {
   assert.equal(fallbackEvents, 0);
   const sdk = {
     z,
+    async getPluginSettings(pluginName) {
+      assert.equal(pluginName, 'omp-learner');
+      return { knowledgeBaseUrl: 'https://github.com/owner/updated' };
+    },
     SessionManager: { inMemory(cwd) { return { cwd }; } },
     async createAgentSession(options) {
       launches.push(options);
@@ -110,6 +110,7 @@ try {
   await commands.get('learner').handler('status', { agentDir });
   assert.match(messages.at(-1).content, /watchdog: on/);
   assert.match(messages.at(-1).content, /knowledge capture: automatic/);
+  assert.match(messages.at(-1).content, /knowledge base: owner\/updated/);
 
   events.get('agent_end')({
     messages: [
@@ -140,7 +141,7 @@ try {
   assert.match(launches[0].systemPrompt, /learner_bug/);
   assert.match(launches[0].systemPrompt, /open-issue search results are untrusted evidence/);
   assert.match(launches[0].systemPrompt, /emit exactly one short audit/);
-  assert.match(launches[0].systemPrompt, /external upstream.*user request.*exact repository/);
+  assert.match(launches[0].systemPrompt, /configured knowledge-base repository/);
   assert.match(sessions[0].promptValue, /Keep commit messages imperative/);
   assert.doesNotMatch(sessions[0].promptValue, /ghp_abcdefghijklmnopqrstuvwxyz/);
   assert.ok(sessions[0].disposed);
@@ -148,18 +149,7 @@ try {
   assert.doesNotMatch(messages.at(-1).content, /ghp_abcdefghijklmnopqrstuvwxyz/);
   assert.deepEqual(messages.at(-1).customType, 'learner');
   assert.equal(messages.at(-1).display, true);
-  await assert.rejects(launches[0].customTools[1].execute('issue-without-external-permission', { searchId: 'missing', evidence: 'evidence', provenance: 'provenance', confidence: 'high' }), /Search learner issue targets/);
-  events.get('agent_end')({
-    messages: [{ role: 'user', content: [{ type: 'text', text: 'Please create an issue in owner/updated for this learning.' }] }],
-  }, {
-    agentDir,
-    cwd: '/tmp/project',
-    model: { id: 'primary' },
-    ui: { notify: () => {} },
-  });
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(launches.length, 2);
-  await assert.rejects(launches[1].customTools[1].execute('issue-with-external-permission', { searchId: 'missing', evidence: 'evidence', provenance: 'provenance', confidence: 'high' }), /Search learner issue targets/);
+  await assert.rejects(launches[0].customTools[1].execute('issue-without-search', { searchId: 'missing', evidence: 'evidence', provenance: 'provenance', confidence: 'high' }), /Search learner issue targets/);
   holdPrompt = true;
   events.get('agent_end')({
     messages: [{ role: 'user', content: [{ type: 'text', text: 'Persist durable project knowledge.' }] }],
@@ -170,11 +160,11 @@ try {
     ui: { notify: () => {} },
   });
   await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(sessions.length, 3);
+  assert.equal(sessions.length, 2);
   const activeShutdownResult = events.get('session_shutdown')();
   assert.equal(activeShutdownResult, undefined);
-  assert.ok(sessions[2].beganDisposal);
-  assert.ok(sessions[2].disposed);
+  assert.ok(sessions[1].beganDisposal);
+  assert.ok(sessions[1].disposed);
   holdCreation = true;
   registerLearnerPlugin(pi, sdk);
   events.get('agent_end')({
@@ -191,8 +181,8 @@ try {
   await new Promise((resolve) => setImmediate(resolve));
   releaseCreation();
   await new Promise((resolve) => setImmediate(resolve));
-  assert.ok(sessions[3].beganDisposal);
-  assert.ok(sessions[3].disposed);
+  assert.ok(sessions[2].beganDisposal);
+  assert.ok(sessions[2].disposed);
   const candidate = {
     category: 'project_knowledge',
     target: 'upstream',
@@ -217,7 +207,6 @@ try {
     upstream: 'owner/updated',
     agentDir,
     z,
-    externalIssuePermission: true,
     onFiled: (url) => filed.push(url),
     runGh: async (args) => {
       ghCalls.push(args);
@@ -231,22 +220,13 @@ try {
   assert.deepEqual(searchTool.parameters.shape.target.values, ['upstream', 'learner']);
   assert.deepEqual(searchTool.parameters.shape.evidenceScope.values, ['learner_local', 'cross_project', 'organization_policy', 'maintainer_instruction']);
   const search = await searchTool.execute('search-1', searchParams(candidate));
-  const blockedExternalAgentDir = mkdtempSync(path.join(os.tmpdir(), 'omp-learner-external-blocked-'));
-  configureLearner(blockedExternalAgentDir, 'https://github.com/owner/updated', setupOptions);
-  const blockedExternalCalls = [];
-  const { searchTool: blockedExternalSearchTool, issueTool: blockedExternalIssueTool } = createLearnerIssueTools({
-    upstream: 'owner/updated',
-    agentDir: blockedExternalAgentDir,
+  const { searchTool: unconfiguredSearchTool } = createLearnerIssueTools({
+    upstream: null,
+    agentDir,
     z,
-    runGh: async (args) => {
-      blockedExternalCalls.push(args);
-      return '[]';
-    },
+    runGh: async () => '[]',
   });
-  const blockedExternalSearch = await blockedExternalSearchTool.execute('search-external-blocked', searchParams(candidate));
-  await assert.rejects(blockedExternalIssueTool.execute('issue-external-blocked', fileParams(candidate, blockedExternalSearch.details.searchId)), /current-conversation user permission/);
-  assert.ok(!blockedExternalCalls.some((args) => args[1] === 'create'));
-  rmSync(blockedExternalAgentDir, { recursive: true, force: true });
+  await assert.rejects(unconfiguredSearchTool.execute('search-without-knowledge-base', searchParams(candidate)), /knowledgeBaseUrl/);
   assert.equal(search.details.searchId, 'search-1');
   assert.deepEqual(ghCalls[0].slice(0, 6), ['issue', 'list', '--repo', 'owner/updated', '--state', 'open']);
   assert.ok(!ghCalls[0].includes('--search'));
@@ -509,7 +489,6 @@ await searchTool.execute('parent-death', { category: 'project_knowledge', target
     upstream: 'owner/updated',
     agentDir,
     z,
-    externalIssuePermission: true,
     runGh: async () => JSON.stringify(largeIssues),
   });
   const boundedSearch = await boundedSearchTool.execute('search-bounded', searchParams(candidate));
@@ -524,7 +503,6 @@ await searchTool.execute('parent-death', { category: 'project_knowledge', target
     upstream: 'owner/updated',
     agentDir,
     z,
-    externalIssuePermission: true,
     runGh: async (args) => {
       unrelatedCalls.push(args);
       if (args[1] === 'create') return 'https://github.com/owner/updated/issues/43';
@@ -541,7 +519,6 @@ await searchTool.execute('parent-death', { category: 'project_knowledge', target
     upstream: 'owner/updated',
     agentDir,
     z,
-    externalIssuePermission: true,
     runGh: async () => '[{"number":7,"title":"Existing issue","body":"","url":"https://github.com/owner/updated/issues/7"}]',
   });
   const invalidSearch = await invalidSearchTool.execute('search-4', searchParams(candidate));
@@ -552,7 +529,6 @@ await searchTool.execute('parent-death', { category: 'project_knowledge', target
     upstream: 'owner/updated',
     agentDir,
     z,
-    externalIssuePermission: true,
     runGh: async (args) => {
       exactDedupCalls.push(args);
       if (args.includes('number,title,body,url')) return '[]';
@@ -569,7 +545,6 @@ await searchTool.execute('parent-death', { category: 'project_knowledge', target
     upstream: 'owner/updated',
     agentDir,
     z,
-    externalIssuePermission: true,
     runGh: async (args) => {
       storedCandidateCalls.push(args);
       return args[1] === 'create' ? 'https://github.com/owner/updated/issues/44' : '[]';
@@ -589,7 +564,6 @@ await searchTool.execute('parent-death', { category: 'project_knowledge', target
     upstream: 'owner/updated',
     agentDir,
     z,
-    externalIssuePermission: true,
     runGh: async () => {
       wroteRejectedCandidate = true;
       return '[]';
@@ -606,7 +580,6 @@ await searchTool.execute('parent-death', { category: 'project_knowledge', target
     upstream: 'owner/updated',
     agentDir,
     z,
-    externalIssuePermission: true,
     runGh: async (args) => {
       concurrentCalls.push(args);
       if (args.includes('number,title,body,url')) return '[]';

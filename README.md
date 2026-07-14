@@ -1,6 +1,6 @@
 # OMP Learner
 
-OMP Learner is an independent, non-blocking watchdog for explicit durable feedback and project-domain knowledge. It turns high-confidence findings into deduplicated GitHub issues in its fixed learner repository or a configured upstream repository for human review.
+OMP Learner is an independent, non-blocking watchdog for explicit durable feedback and project-domain knowledge. It turns high-confidence findings into deduplicated GitHub issues in its fixed learner repository or one configured knowledge-base repository for human review.
 
 ## Install
 
@@ -16,24 +16,29 @@ v1 is an independent watchdog with an issue-first, human-review workflow; it is 
 
 After each completed watchdog run, OMP displays a redacted, bounded `Learner audit` card in the primary transcript. It records either the single inferred learning or that no durable learning was inferred; it is audit output, not a second advisor turn.
 
-The watchdog files learner-local guidance against `klondikemarlen/omp-learner` and eligible shared guidance against the configured upstream repository. Closed targets and evidence scopes prevent arbitrary repositories and keep learner-local evidence self-scoped.
+The watchdog files learner-local guidance against `klondikemarlen/omp-learner` and eligible shared guidance against the configured knowledge-base repository. Closed targets and evidence scopes prevent arbitrary repositories and keep learner-local evidence self-scoped.
 
 Linux x64 is the supported abrupt-parent-death guarantee: GitHub CLI subprocesses use the packaged parent-death launcher. Other platforms execute `gh` directly and retain handled-shutdown cleanup only.
 
 ## Setup
 
-
 ```text
-/learner setup https://github.com/owner/shared-guidance
+/learner setup
 ```
 
-Repositories under `klondikemarlen` are controlled targets. An external configured upstream remains searchable, but Learner creates an issue there only when the current conversation contains a user request to file, create, or open an issue that names that exact repository. Setup never grants standing permission for external filing.
+Optionally configure the one repository that may receive shared guidance:
 
-Setup validates that the repository is accessible and has GitHub Issues enabled, then persists its normalized name and enabled state in:
+```bash
+omp plugin config omp-learner --set=knowledgeBaseUrl=https://github.com/owner/shared-guidance
+```
+
+`knowledgeBaseUrl` must be an HTTPS GitHub repository URL. Without it, Learner files only against `klondikemarlen/omp-learner`. The setting is the sole external-target authorization; `/learner setup` only enables the watchdog and persists that enabled state in:
 
 ```text
 ~/.omp/agent/learner/config.json
 ```
+
+Existing `/learner setup <url>` targets are not migrated; set `knowledgeBaseUrl` explicitly after upgrading.
 
 It does not modify OMP's advisor roster or global configuration. It takes effect for the next completed primary-agent turn; no restart or `modelRoles.advisor` configuration is required.
 
@@ -72,11 +77,11 @@ learner_file_issue
 
 `learner_search_issues` retrieves up to 1,000 open issues from the fixed, host-validated target repository, ranks them against the candidate, and returns a redacted 16,000-character review snapshot. The response states when summaries or GitHub results are truncated; semantic reuse is therefore best-effort over that bounded snapshot. The learner must review it before filing. It reuses a selected materially equivalent issue when one exists; unrelated results do not suppress a distinct proposal. `learner_file_issue` can create at most one issue per learner run and keeps a final fingerprint lookup as an exact-match/race-safe backstop. Created issues identify the proposed guidance, category, scope, high confidence, visible provenance, and redacted evidence. The learner cannot use `bash`, edit files, commit, push, open pull requests, change memory, or block the primary agent.
 
-GitHub authentication is delegated to the existing `gh` CLI login. OMP Learner never persists a GitHub token, transcript, or candidate history; it retains only the enabled flag and normalized upstream repository.
+GitHub authentication is delegated to the existing `gh` CLI login. OMP Learner never persists a GitHub token, transcript, candidate history, or external target; it retains only its enabled flag.
 
 ### Issue targets
 
-Before searching, the watchdog classifies evidence as `learner_local`, `cross_project`, `organization_policy`, or `maintainer_instruction`. Evidence exclusively from OMP Learner’s repository, runtime, commits, workflows, tests, or docs is `learner_local` and must use the fixed `klondikemarlen/omp-learner` repository; reusable-sounding prose does not change that. The configured upstream is available only with cited cross-project evidence, an explicit organization policy source, or maintainer instruction. The target and evidence scope are closed tool parameters; callers cannot provide arbitrary repositories, and the reviewed search ID binds the repository reused for duplicate lookup and issue creation.
+Before searching, the watchdog classifies evidence as `learner_local`, `cross_project`, `organization_policy`, or `maintainer_instruction`. Evidence exclusively from OMP Learner’s repository, runtime, commits, workflows, tests, or docs is `learner_local` and must use the fixed `klondikemarlen/omp-learner` repository; reusable-sounding prose does not change that. The configured knowledge-base repository is available only with cited cross-project evidence, an explicit organization policy source, or maintainer instruction. The target and evidence scope are closed tool parameters; callers cannot provide arbitrary repositories, and the reviewed search ID binds the repository reused for duplicate lookup and issue creation.
 
 ### Shutdown behavior
 
@@ -94,15 +99,15 @@ Launcher target selection is centralized in the runtime registry. It currently c
 
 ## Knowledge-base builder
 
-In addition to code-style, test, commit, and workflow guidance, the learner captures explicit, stable project-domain facts as `project_knowledge` proposals. The upstream issue tracker is therefore a reviewable knowledge backlog: maintainers can turn accepted issues into the repository's documentation, rules, skills, or other durable project guidance.
+In addition to code-style, test, commit, and workflow guidance, the learner captures explicit, stable project-domain facts as `project_knowledge` proposals. The configured knowledge-base issue tracker is therefore a reviewable backlog: maintainers can turn accepted issues into the repository's documentation, rules, skills, or other durable project guidance.
 
 The learner does not treat all conversation as knowledge and does not write knowledge files automatically. It ignores routine requests, verifier evidence, PASS/FAIL/BLOCKED feedback, one-off wording changes, and uncertain claims.
 
 ### Librarian integration
 
-The native bundled `librarian` task agent does **not** yet consume this upstream knowledge automatically. OMP exposes bundled task-agent profiles to the primary `task` tool, but it does not expose an extension API that can launch or augment a specific profile from an automatic watcher. This plugin therefore does not overwrite the user's `librarian` profile or inject upstream context into unrelated agents.
+The native bundled `librarian` task agent does **not** yet consume configured knowledge-base issues automatically. OMP exposes bundled task-agent profiles to the primary `task` tool, but it does not expose an extension API that can launch or augment a specific profile from an automatic watcher. This plugin therefore does not overwrite the user's `librarian` profile or inject knowledge-base context into unrelated agents.
 
-When OMP exposes extension-owned task spawning and profile-aware prompt/tool augmentation, the learner can become a native, Hub-visible knowledge-aware subagent. Until then, use accepted upstream issues as the canonical review boundary.
+When OMP exposes extension-owned task spawning and profile-aware prompt/tool augmentation, the learner can become a native, Hub-visible knowledge-aware subagent. Until then, use accepted knowledge-base issues as the canonical review boundary.
 
 ## Disable and verify
 

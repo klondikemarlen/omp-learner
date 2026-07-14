@@ -114,7 +114,7 @@ function createWatcher(pi, sdk, getPluginSettings) {
       if (stopping) return;
       await session.setActiveToolsByName(ACTIVE_TOOLS);
       await session.prompt(transcript);
-      if (!stopping && audit) display(pi, `Learner audit:\n${redactText(audit).slice(0, MAX_AUDIT_CHARS)}`);
+      if (!stopping && audit.startsWith('Inferred learning:')) display(pi, `Learner audit:\n${redactText(audit).slice(0, MAX_AUDIT_CHARS)}`);
     } finally {
       unsubscribeAudit?.();
       await disposeSession(session);

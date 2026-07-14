@@ -57,6 +57,7 @@ try {
   let releasePrompt;
   let holdCreation = false;
   let releaseCreation;
+  let auditText = 'Inferred learning: Keep commit messages imperative. token: ghp_abcdefghijklmnopqrstuvwxyz';
   const pi = {
     pi: { getAgentDir: () => agentDir },
     registerCommand(name, command) { commands.set(name, command); },
@@ -93,7 +94,7 @@ try {
         async prompt(value) {
           this.promptValue = value;
           for (const listener of listeners) {
-            listener({ type: 'message_end', message: { role: 'assistant', content: [{ type: 'text', text: 'Inferred learning: Keep commit messages imperative. token: ghp_abcdefghijklmnopqrstuvwxyz' }] } });
+            listener({ type: 'message_end', message: { role: 'assistant', content: [{ type: 'text', text: auditText }] } });
           }
           if (holdPrompt) await new Promise((resolve) => { releasePrompt = resolve; });
         },
@@ -172,6 +173,20 @@ try {
   assert.deepEqual(messages.at(-1).customType, 'learner');
   assert.equal(messages.at(-1).display, true);
   await assert.rejects(launches[0].customTools[1].execute('issue-without-search', { searchId: 'missing', evidence: 'evidence', provenance: 'provenance', confidence: 'high' }), /Search learner issue targets/);
+  auditText = 'No durable learning inferred.';
+  const messageCount = messages.length;
+  events.get('agent_end')({
+    messages: [{ role: 'user', content: [{ type: 'text', text: 'Complete the ordinary task.' }] }],
+  }, {
+    agentDir,
+    cwd: '/tmp/project',
+    model: { id: 'primary' },
+    ui: { notify: () => {} },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(sessions.length, 2);
+  assert.equal(messages.length, messageCount);
+  auditText = 'Inferred learning: Keep commit messages imperative. token: ghp_abcdefghijklmnopqrstuvwxyz';
   holdPrompt = true;
   events.get('agent_end')({
     messages: [{ role: 'user', content: [{ type: 'text', text: 'Persist durable project knowledge.' }] }],
@@ -182,11 +197,11 @@ try {
     ui: { notify: () => {} },
   });
   await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(sessions.length, 2);
+  assert.equal(sessions.length, 3);
   const activeShutdownResult = events.get('session_shutdown')();
   assert.equal(activeShutdownResult, undefined);
-  assert.ok(sessions[1].beganDisposal);
-  assert.ok(sessions[1].disposed);
+  assert.ok(sessions[2].beganDisposal);
+  assert.ok(sessions[2].disposed);
   holdCreation = true;
   registerLearnerPlugin(pi, sdk);
   events.get('agent_end')({
@@ -203,8 +218,8 @@ try {
   await new Promise((resolve) => setImmediate(resolve));
   releaseCreation();
   await new Promise((resolve) => setImmediate(resolve));
-  assert.ok(sessions[2].beganDisposal);
-  assert.ok(sessions[2].disposed);
+  assert.ok(sessions[3].beganDisposal);
+  assert.ok(sessions[3].disposed);
   const candidate = {
     category: 'project_knowledge',
     target: 'upstream',

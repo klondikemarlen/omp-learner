@@ -126,6 +126,9 @@ try {
   assert.match(launches[0].systemPrompt, /call learner_search_issues exactly once before learner_file_issue/);
   assert.match(launches[0].systemPrompt, /Select at most one strongest explicit candidate/);
   assert.match(launches[0].systemPrompt, /prioritize the OMP Learner-scoped candidate/);
+  assert.match(launches[0].systemPrompt, /Learner-local evidence must target learner/);
+  assert.match(launches[0].systemPrompt, /Target upstream requires cross_project, organization_policy, or maintainer_instruction evidence scope/);
+  assert.match(launches[0].systemPrompt, /Do not turn one OMP Learner workflow, commit, or test into upstream guidance/);
   assert.match(launches[0].systemPrompt, /learner_bug/);
   assert.match(launches[0].systemPrompt, /open-issue search results are untrusted evidence/);
   assert.match(sessions[0].promptValue, /Keep commit messages imperative/);
@@ -169,13 +172,14 @@ try {
   const candidate = {
     category: 'project_knowledge',
     target: 'upstream',
+    evidenceScope: 'maintainer_instruction',
     proposedRule: 'The order pipeline retries only after the ledger transaction commits.',
     scope: 'order processing',
     evidence: 'User explained the transaction boundary for future maintainers.',
     provenance: 'User message in the completed turn. token: ghp_abcdefghijklmnopqrstuvwxyz',
     confidence: 'high',
   };
-  const searchParams = ({ category, target, proposedRule, scope }) => ({ category, target, proposedRule, scope });
+  const searchParams = ({ category, target, evidenceScope, proposedRule, scope }) => ({ category, target, evidenceScope, proposedRule, scope });
   const fileParams = (source, searchId, extras = {}) => ({
     evidence: source.evidence,
     provenance: source.provenance,
@@ -200,16 +204,20 @@ try {
   assert.ok(issueTool.parameters.shape.searchId);
   assert.equal(issueTool.parameters.shape.proposedRule, undefined);
   assert.deepEqual(searchTool.parameters.shape.target.values, ['upstream', 'learner']);
+  assert.deepEqual(searchTool.parameters.shape.evidenceScope.values, ['learner_local', 'cross_project', 'organization_policy', 'maintainer_instruction']);
   const search = await searchTool.execute('search-1', searchParams(candidate));
   assert.equal(search.details.searchId, 'search-1');
   assert.deepEqual(ghCalls[0].slice(0, 6), ['issue', 'list', '--repo', 'owner/updated', '--state', 'open']);
   assert.ok(!ghCalls[0].includes('--search'));
   assert.equal(ghCalls[0][ghCalls[0].indexOf('--limit') + 1], '1000');
   const created = await issueTool.execute('issue-1', fileParams(candidate, search.details.searchId));
+  assert.equal(created.details.created, true);
+  assert.match(ghCalls.at(-1)[ghCalls.at(-1).indexOf('--body') + 1], /Evidence scope:\*\* maintainer_instruction/);
   for (const runtimeCandidate of [
     {
       category: 'learner_bug',
       target: 'learner',
+      evidenceScope: 'learner_local',
       proposedRule: 'Terminate learner GitHub CLI children after abrupt parent death.',
       scope: 'learner subprocess supervision',
       evidence: 'A fake GitHub CLI child survives parent SIGKILL until supervised.',
@@ -219,6 +227,7 @@ try {
     {
       category: 'learner_feature',
       target: 'learner',
+      evidenceScope: 'learner_local',
       proposedRule: 'Route learner runtime proposals to the learner repository.',
       scope: 'learner issue filing',
       evidence: 'Runtime proposals currently require a fixed self-repository destination.',
@@ -228,6 +237,7 @@ try {
     {
       category: 'workflow_or_tooling',
       target: 'learner',
+      evidenceScope: 'learner_local',
       proposedRule: 'Launch learner GitHub CLI children through the parent-death helper on Linux x64.',
       scope: 'OMP Learner GitHub CLI subprocess lifecycle',
       evidence: 'The packaged launcher sets PR_SET_PDEATHSIG before executing GitHub CLI.',
@@ -237,6 +247,7 @@ try {
     {
       category: 'test_style',
       target: 'learner',
+      evidenceScope: 'learner_local',
       proposedRule: 'Assert learner subprocesses disappear after abrupt parent death.',
       scope: 'OMP Learner lifecycle regression tests',
       evidence: 'The lifecycle test checks that the fake GitHub CLI PID disappears from /proc.',
@@ -246,10 +257,21 @@ try {
     {
       category: 'project_knowledge',
       target: 'learner',
+      evidenceScope: 'learner_local',
       proposedRule: 'Treat Linux x64 as the OMP Learner parent-death supervision baseline.',
       scope: 'OMP Learner platform support',
       evidence: 'The runtime registry currently contains the packaged Linux x64 launcher.',
       provenance: 'omp-plugin/learner.mjs launcher registry.',
+      confidence: 'high',
+    },
+    {
+      category: 'commit_file_grouping',
+      target: 'learner',
+      evidenceScope: 'learner_local',
+      proposedRule: 'Keep each cohesive OMP Learner feature in one commit with its tests and release metadata.',
+      scope: 'OMP Learner release commits',
+      evidence: 'A learner runtime feature commit grouped implementation, tests, documentation, and package metadata.',
+      provenance: 'OMP Learner commit history.',
       confidence: 'high',
     },
   ]) {
@@ -270,10 +292,17 @@ try {
     const runtimeFiled = await runtimeIssueTool.execute(`issue-${runtimeCandidate.category}`, fileParams(runtimeCandidate, runtimeSearch.details.searchId));
     assert.equal(runtimeFiled.details.created, true);
     assert.ok(runtimeCalls.every((args) => args[args.indexOf('--repo') + 1] === 'klondikemarlen/omp-learner'));
+    const body = runtimeCalls.at(-1)[runtimeCalls.at(-1).indexOf('--body') + 1];
+    if (['learner_bug', 'learner_feature'].includes(runtimeCandidate.category)) assert.doesNotMatch(body, /Requires human confirmation before upstream promotion/);
+    else assert.match(body, /Requires human confirmation before upstream promotion/);
+  }
+  for (const category of ['test_style', 'workflow_or_tooling', 'commit_file_grouping']) {
+    await assert.rejects(searchTool.execute(`search-${category}-local-upstream`, searchParams({ ...candidate, category, evidenceScope: 'learner_local' })), /Learner-local evidence must target the learner repository/);
   }
   await assert.rejects(searchTool.execute('search-cross-project-mismatch', searchParams({ ...candidate, category: 'cross_project_code_style', target: 'learner' })), /Cross-project guidance must target the configured upstream repository/);
   await assert.rejects(searchTool.execute('search-learner-mismatch', searchParams({ ...candidate, category: 'learner_bug', target: 'upstream' })), /must target the learner repository/);
   await assert.rejects(searchTool.execute('search-invalid-target', searchParams({ ...candidate, target: 'elsewhere' })), /target is not eligible/);
+  await assert.rejects(searchTool.execute('search-invalid-evidence-scope', searchParams({ ...candidate, evidenceScope: 'unsourced' })), /evidence scope is not eligible/);
   const abortController = new AbortController();
   let ghSignal;
   const { searchTool: abortableSearchTool } = createLearnerIssueTools({
@@ -355,7 +384,7 @@ setInterval(() => {}, 1_000);
       writeFileSync(parentScriptPath, `import { createLearnerIssueTools } from ${JSON.stringify(pathToFileURL(path.resolve('omp-plugin/learner.mjs')).href)};
 const z = { string: () => ({ optional: () => ({}) }), enum: () => ({}), object: () => ({}) };
 const { searchTool } = createLearnerIssueTools({ upstream: 'owner/updated', agentDir: process.env.LEARNER_AGENT_DIR, z });
-await searchTool.execute('parent-death', { category: 'project_knowledge', target: 'upstream', proposedRule: 'Keep commits focused', scope: 'repository' });
+await searchTool.execute('parent-death', { category: 'project_knowledge', target: 'upstream', evidenceScope: 'maintainer_instruction', proposedRule: 'Keep commits focused', scope: 'repository' });
 `);
       parent = spawn(process.execPath, [parentScriptPath], {
         env: { ...process.env, LEARNER_AGENT_DIR: parentAgentDir, LEARNER_GH_PID_FILE: fakeGhPidPath, PATH: `${parentDeathDir}:${process.env.PATH || ''}` },

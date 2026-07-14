@@ -64,7 +64,7 @@ GitHub authentication is delegated to the existing `gh` CLI login. OMP Learner n
 
 ### Issue targets
 
-Durable guidance specifically scoped to OMP Learner itself—its runtime, issue filing, GitHub CLI launcher, CI, tests, supported platform behavior, or local maintenance guidance—uses the fixed `klondikemarlen/omp-learner` repository. Reusable or cross-project guidance, configured-project guidance, and any candidate not explicitly scoped to OMP Learner use the configured upstream repository. The target is a closed tool parameter; callers cannot provide arbitrary repositories, and the reviewed search ID binds the repository reused for duplicate lookup and issue creation.
+Before searching, the watchdog classifies evidence as `learner_local`, `cross_project`, `organization_policy`, or `maintainer_instruction`. Evidence exclusively from OMP Learner’s repository, runtime, commits, workflows, tests, or docs is `learner_local` and must use the fixed `klondikemarlen/omp-learner` repository; reusable-sounding prose does not change that. The configured upstream is available only with cited cross-project evidence, an explicit organization policy source, or maintainer instruction. The target and evidence scope are closed tool parameters; callers cannot provide arbitrary repositories, and the reviewed search ID binds the repository reused for duplicate lookup and issue creation.
 
 ### Shutdown behavior
 

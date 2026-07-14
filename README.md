@@ -29,7 +29,7 @@ Linux x64 is the supported abrupt-parent-death guarantee: GitHub CLI subprocesse
 Optionally configure the one repository that may receive shared guidance:
 
 ```bash
-omp plugin config omp-learner --set=knowledgeBaseUrl=https://github.com/owner/shared-guidance
+omp plugin config set omp-learner knowledgeBaseUrl https://github.com/owner/shared-guidance
 ```
 
 `knowledgeBaseUrl` must be an HTTPS GitHub repository URL. Without it, Learner files only against `klondikemarlen/omp-learner`. The setting is the sole external-target authorization; `/learner setup` only enables the watchdog and persists that enabled state in:

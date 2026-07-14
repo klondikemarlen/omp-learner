@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import { configurationPath, configureLearner, disableLearner, readConfiguration, resolveAgentDir } from './learner/config.mjs';
 
 const COMMANDS = ['setup', 'off', 'status'];
@@ -9,6 +10,7 @@ const ACTIVE_TOOLS = ['read', 'grep', 'glob', 'learner_search_issues', 'learner_
 const MAX_TRANSCRIPT_CHARS = 16_000;
 const MAX_OPEN_ISSUES = 1_000;
 const MAX_ISSUE_SEARCH_CHARS = 16_000;
+const LINUX_X64_PARENT_DEATH_LAUNCHER = fileURLToPath(new URL('./learner/bin/omp-learner-pdeath-linux-x64', import.meta.url));
 const execFileAsync = promisify(execFile);
 
 export function registerLearnerPlugin(pi, sdk) {
@@ -325,8 +327,14 @@ function isEnabledFor(currentAgentDir, upstream) {
 }
 
 async function runGitHubCli(args, signal) {
-  const { stdout } = await execFileAsync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], signal });
+  const invocation = linuxParentDeathLauncher(args);
+  const { stdout } = await execFileAsync(invocation.command, invocation.args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], signal });
   return stdout;
+}
+
+function linuxParentDeathLauncher(args) {
+  if (process.platform !== 'linux' || process.arch !== 'x64') return { command: 'gh', args };
+  return { command: LINUX_X64_PARENT_DEATH_LAUNCHER, args: [String(process.pid), 'gh', ...args] };
 }
 
 async function handleCommand(pi, args, ctx) {

@@ -60,7 +60,15 @@ GitHub authentication is delegated to the existing `gh` CLI login. OMP Learner n
 
 ### Shutdown behavior
 
-On OMP's handled session shutdown (`/exit`, `/quit`, SIGINT, SIGTERM, SIGHUP, or an uncaught exception), the learner stops queued work, disposes its active watchdog session, and cancels an in-flight `gh` call. An uncatchable SIGKILL of the OMP parent while the host remains alive cannot run plugin cleanup; a `gh` child can then be reparented and is outside this plugin's portable runtime guarantee.
+On OMP's handled session shutdown (`/exit`, `/quit`, SIGINT, SIGTERM, SIGHUP, or an uncaught exception), the learner stops queued work, disposes its active watchdog session, and cancels an in-flight `gh` call. On Linux x64, the packaged static launcher also sets `PR_SET_PDEATHSIG` to `SIGKILL` and rechecks its parent before it executes `gh`, so the child dies if the OMP parent is abruptly killed. Other platforms use `gh` directly and retain only the handled-shutdown guarantee.
+
+The checked-in Linux x64 launcher is built from `omp-plugin/learner/bin/omp-learner-pdeath.c` with:
+
+```bash
+npm run build:linux-parent-death-helper
+```
+
+It requires a Linux x64 C toolchain with static linking support; normal plugin installation and `npm test` do not compile it.
 
 ## Knowledge-base builder
 

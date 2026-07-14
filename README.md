@@ -27,6 +27,8 @@ Linux x64 is the supported abrupt-parent-death guarantee: GitHub CLI subprocesse
 /learner setup https://github.com/owner/shared-guidance
 ```
 
+Repositories under `klondikemarlen` are controlled targets. An external configured upstream remains searchable, but Learner creates an issue there only when the current conversation contains a user request to file, create, or open an issue that names that exact repository. Setup never grants standing permission for external filing.
+
 Setup validates that the repository is accessible and has GitHub Issues enabled, then persists its normalized name and enabled state in:
 
 ```text

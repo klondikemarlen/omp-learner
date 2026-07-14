@@ -1,0 +1,30 @@
+name: Linux Launcher
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify-linux-launcher:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Rebuild launcher in pinned toolchain
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            gcc@sha256:b99b86a28812b1e6453a231a947dc43d76fe192788a12f344a9b568bf9f5d24c \
+            sh -c 'cc -O2 -static -s -o omp-plugin/learner/bin/omp-learner-pdeath-linux-x64 omp-plugin/learner/bin/omp-learner-pdeath.c'
+          git diff --exit-code -- omp-plugin/learner/bin/omp-learner-pdeath-linux-x64
+      - name: Test launcher behavior
+        run: npm test
+      - name: Verify packaged launcher mode
+        run: |
+          npm pack
+          tar -tvf omp-learner-*.tgz | grep -E '^-rwxr-xr-x .*omp-learner-pdeath-linux-x64$'
+          rm omp-learner-*.tgz

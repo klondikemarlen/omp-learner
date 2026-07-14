@@ -68,7 +68,7 @@ The checked-in Linux x64 launcher is built from `omp-plugin/learner/bin/omp-lear
 npm run build:linux-parent-death-helper
 ```
 
-It requires a Linux x64 C toolchain with static linking support; normal plugin installation and `npm test` do not compile it.
+It requires Docker on Linux x64; normal plugin installation and `npm test` do not compile it. The build command uses a digest-pinned GCC image so release maintainers and CI produce the same artifact.
 
 Launcher target selection is centralized in the runtime registry. It currently contains only `linux-x64`; add an artifact and one registry entry when a new platform is explicitly supported.
 

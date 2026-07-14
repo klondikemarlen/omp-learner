@@ -390,11 +390,11 @@ async function handleCommand(pi, args, ctx, getPluginSettings, setKnowledgeBaseU
 
   try {
     if (command === 'setup') {
-      if (tokens.length > 2) return display(pi, 'Usage: /learner setup [https://github.com/owner/repository]');
-      const upstream = tokens[1] && normalizeUpstream(tokens[1]);
-      if (upstream) await setKnowledgeBaseUrl(ctx?.cwd || process.cwd(), `https://github.com/${upstream}`);
+      if (tokens.length !== 2) return display(pi, 'Usage: /learner setup https://github.com/owner/repository');
+      const upstream = normalizeUpstream(tokens[1]);
+      await setKnowledgeBaseUrl(ctx?.cwd || process.cwd(), `https://github.com/${upstream}`);
       configureLearner(currentAgentDir);
-      return display(pi, upstream ? `Learner watchdog enabled for ${upstream}.` : 'Learner watchdog enabled. Set omp-learner knowledgeBaseUrl to file shared guidance.');
+      return display(pi, `Learner watchdog enabled for ${upstream}.`);
     }
 
     if (command === 'off') {
@@ -404,7 +404,7 @@ async function handleCommand(pi, args, ctx, getPluginSettings, setKnowledgeBaseU
     }
 
     if (command === 'status' && tokens.length === 1) return display(pi, await statusText(currentAgentDir, getPluginSettings, ctx));
-    return display(pi, 'Usage: /learner setup [https://github.com/owner/repository] | off | status');
+    return display(pi, 'Usage: /learner setup https://github.com/owner/repository | off | status');
   } catch (error) {
     return display(pi, `Learner setup failed: ${error.message}`);
   }

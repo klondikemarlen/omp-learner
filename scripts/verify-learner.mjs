@@ -117,6 +117,15 @@ try {
   assert.match(messages.at(-1).content, /watchdog: on/);
   assert.match(messages.at(-1).content, /knowledge capture: automatic/);
   assert.match(messages.at(-1).content, /knowledge base: owner\/updated/);
+  disableLearner(agentDir);
+  knowledgeBaseWrite = undefined;
+  await commands.get('learner').handler('setup', { agentDir, cwd: '/tmp/project' });
+  assert.match(messages.at(-1).content, /Usage: \/learner setup https:\/\/github\.com\/owner\/repository/);
+  assert.equal(readConfiguration(agentDir).enabled, false);
+  assert.equal(knowledgeBaseWrite, undefined);
+  await commands.get('learner').handler('setup https://example.com/owner/knowledge', { agentDir, cwd: '/tmp/project' });
+  assert.match(messages.at(-1).content, /HTTPS GitHub repository URL/);
+  assert.equal(readConfiguration(agentDir).enabled, false);
   await commands.get('learner').handler('setup https://github.com/owner/knowledge.git', { agentDir, cwd: '/tmp/project' });
   assert.equal(knowledgeBaseUrl, 'https://github.com/owner/knowledge');
   assert.deepEqual(knowledgeBaseWrite, { cwd: '/tmp/project', value: 'https://github.com/owner/knowledge' });

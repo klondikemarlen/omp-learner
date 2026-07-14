@@ -14,7 +14,7 @@ Restart OMP after installing or reinstalling so a fresh session discovers the ex
 
 v1 is an independent watchdog with an issue-first, human-review workflow; it is not a second advisor or an interactive candidate-review UI. Its stable lifecycle commands are `/learner setup`, `/learner off`, and `/learner status`.
 
-After each completed watchdog run, OMP displays a redacted, bounded `Learner audit` card in the primary transcript. It records either the single inferred learning or that no durable learning was inferred; it is audit output, not a second advisor turn.
+After a watchdog run stores or reuses a durable learning, OMP displays one redacted, bounded `Learner audit` card in the primary transcript. Runs that infer no durable learning are silent; the card is audit output, not a second advisor turn.
 
 The watchdog files learner-local guidance against `klondikemarlen/omp-learner` and eligible shared guidance against the configured knowledge-base repository. Closed targets and evidence scopes prevent arbitrary repositories and keep learner-local evidence self-scoped.
 

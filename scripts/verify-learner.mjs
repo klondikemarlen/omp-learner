@@ -70,11 +70,17 @@ try {
   });
   assert.ok(fallbackCommands.has('learner'));
   assert.equal(fallbackEvents, 0);
+  let knowledgeBaseUrl = 'https://github.com/owner/updated';
+  let knowledgeBaseWrite;
   const sdk = {
     z,
     async getPluginSettings(pluginName) {
       assert.equal(pluginName, 'omp-learner');
-      return { knowledgeBaseUrl: 'https://github.com/owner/updated' };
+      return { knowledgeBaseUrl };
+    },
+    async setKnowledgeBaseUrl(cwd, value) {
+      knowledgeBaseWrite = { cwd, value };
+      knowledgeBaseUrl = value;
     },
     SessionManager: { inMemory(cwd) { return { cwd }; } },
     async createAgentSession(options) {
@@ -111,6 +117,12 @@ try {
   assert.match(messages.at(-1).content, /watchdog: on/);
   assert.match(messages.at(-1).content, /knowledge capture: automatic/);
   assert.match(messages.at(-1).content, /knowledge base: owner\/updated/);
+  await commands.get('learner').handler('setup https://github.com/owner/knowledge.git', { agentDir, cwd: '/tmp/project' });
+  assert.equal(knowledgeBaseUrl, 'https://github.com/owner/knowledge');
+  assert.deepEqual(knowledgeBaseWrite, { cwd: '/tmp/project', value: 'https://github.com/owner/knowledge' });
+  assert.match(messages.at(-1).content, /enabled for owner\/knowledge/);
+  await commands.get('learner').handler('status', { agentDir, cwd: '/tmp/project' });
+  assert.match(messages.at(-1).content, /knowledge base: owner\/knowledge/);
 
   events.get('agent_end')({
     messages: [

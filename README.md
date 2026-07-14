@@ -23,22 +23,22 @@ Linux x64 is the supported abrupt-parent-death guarantee: GitHub CLI subprocesse
 ## Setup
 
 ```text
-/learner setup
+/learner setup [https://github.com/owner/shared-guidance]
 ```
 
-Optionally configure the one repository that may receive shared guidance:
+Alternatively, configure the one repository that may receive shared guidance:
 
 ```bash
 omp plugin config set omp-learner knowledgeBaseUrl https://github.com/owner/shared-guidance
 ```
 
-`knowledgeBaseUrl` must be an HTTPS GitHub repository URL. Without it, Learner files only against `klondikemarlen/omp-learner`. The setting is the sole external-target authorization; `/learner setup` only enables the watchdog and persists that enabled state in:
+`knowledgeBaseUrl` must be an HTTPS GitHub repository URL. Without it, Learner files only against `klondikemarlen/omp-learner`. The setting is the sole external-target authorization. `/learner setup` enables the watchdog and, when given a URL, saves its normalized value as `knowledgeBaseUrl`; its enabled state remains in:
 
 ```text
 ~/.omp/agent/learner/config.json
 ```
 
-Existing `/learner setup <url>` targets are not migrated; set `knowledgeBaseUrl` explicitly after upgrading.
+Existing stored `/learner setup <url>` targets from before this setting are not migrated.
 
 It does not modify OMP's advisor roster or global configuration. It takes effect for the next completed primary-agent turn; no restart or `modelRoles.advisor` configuration is required.
 

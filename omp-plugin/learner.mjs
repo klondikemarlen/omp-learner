@@ -24,10 +24,11 @@ const execFileAsync = promisify(execFile);
 
 export function registerLearnerPlugin(pi, sdk) {
   const getPluginSettings = sdk?.getPluginSettings || (async () => ({}));
+  const setKnowledgeBaseUrl = sdk?.setKnowledgeBaseUrl || (async () => { throw new Error('OMP plugin settings are unavailable.'); });
   pi.registerCommand('learner', {
     description: 'Configure the persistent learner watchdog.',
     getArgumentCompletions: completeCommand,
-    handler: async (args, ctx) => handleCommand(pi, args, ctx, getPluginSettings),
+    handler: async (args, ctx) => handleCommand(pi, args, ctx, getPluginSettings, setKnowledgeBaseUrl),
   });
 
   if (!sdk?.createAgentSession || !sdk?.SessionManager || !sdk?.z) return;
@@ -382,16 +383,18 @@ export function resolveParentDeathLauncher({ platform = process.platform, archit
   return launcher ? { command: launcher, args: [String(parentPid), 'gh', ...args] } : { command: 'gh', args };
 }
 
-async function handleCommand(pi, args, ctx, getPluginSettings) {
+async function handleCommand(pi, args, ctx, getPluginSettings, setKnowledgeBaseUrl) {
   const tokens = args.trim().split(/\s+/).filter(Boolean);
   const command = tokens[0] || 'status';
   const currentAgentDir = agentDir(pi, ctx);
 
   try {
     if (command === 'setup') {
-      if (tokens.length !== 1) return display(pi, 'Usage: /learner setup');
+      if (tokens.length > 2) return display(pi, 'Usage: /learner setup [https://github.com/owner/repository]');
+      const upstream = tokens[1] && normalizeUpstream(tokens[1]);
+      if (upstream) await setKnowledgeBaseUrl(ctx?.cwd || process.cwd(), `https://github.com/${upstream}`);
       configureLearner(currentAgentDir);
-      return display(pi, 'Learner watchdog enabled. Set omp-learner knowledgeBaseUrl to file shared guidance.');
+      return display(pi, upstream ? `Learner watchdog enabled for ${upstream}.` : 'Learner watchdog enabled. Set omp-learner knowledgeBaseUrl to file shared guidance.');
     }
 
     if (command === 'off') {
@@ -401,7 +404,7 @@ async function handleCommand(pi, args, ctx, getPluginSettings) {
     }
 
     if (command === 'status' && tokens.length === 1) return display(pi, await statusText(currentAgentDir, getPluginSettings, ctx));
-    return display(pi, 'Usage: /learner setup | off | status');
+    return display(pi, 'Usage: /learner setup [https://github.com/owner/repository] | off | status');
   } catch (error) {
     return display(pi, `Learner setup failed: ${error.message}`);
   }

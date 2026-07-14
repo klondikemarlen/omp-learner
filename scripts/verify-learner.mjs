@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { configureLearner, configurationPath, disableLearner, normalizeUpstream, readConfiguration } from '../omp-plugin/learner/config.mjs';
 import { createLearnerIssueTools, registerLearnerPlugin } from '../omp-plugin/learner.mjs';
 
@@ -255,6 +257,62 @@ setInterval(() => {}, 1_000);
     else process.env.LEARNER_GH_PID_FILE = originalPidPath;
     rmSync(fakeGhDir, { recursive: true, force: true });
   }
+  if (process.platform === 'linux' && process.arch === 'x64') {
+    const parentDeathDir = mkdtempSync(path.join(os.tmpdir(), 'omp-learner-pdeath-'));
+    const fakeGhPath = path.join(parentDeathDir, 'gh');
+    const fakeGhPidPath = path.join(parentDeathDir, 'gh.pid');
+    const parentScriptPath = path.join(parentDeathDir, 'parent.mjs');
+    const parentAgentDir = path.join(parentDeathDir, 'agent');
+    let parent;
+    let parentExited = false;
+    let parentGhPid;
+    let parentGhExited = false;
+    try {
+      mkdirSync(path.join(parentAgentDir, 'learner'), { recursive: true });
+      writeFileSync(path.join(parentAgentDir, 'learner', 'config.json'), JSON.stringify({ version: 3, enabled: true, upstream: 'owner/updated' }));
+      writeFileSync(fakeGhPath, `#!/usr/bin/env node
+import { writeFileSync } from 'node:fs';
+process.on('SIGTERM', () => {});
+writeFileSync(process.env.LEARNER_GH_PID_FILE, String(process.pid));
+setInterval(() => {}, 1_000);
+`, { mode: 0o700 });
+      writeFileSync(parentScriptPath, `import { createLearnerIssueTools } from ${JSON.stringify(pathToFileURL(path.resolve('omp-plugin/learner.mjs')).href)};
+const z = { string: () => ({ optional: () => ({}) }), object: () => ({}) };
+const { searchTool } = createLearnerIssueTools({ upstream: 'owner/updated', agentDir: process.env.LEARNER_AGENT_DIR, z });
+await searchTool.execute('parent-death', { category: 'project_knowledge', proposedRule: 'Keep commits focused', scope: 'repository' });
+`);
+      parent = spawn(process.execPath, [parentScriptPath], {
+        env: { ...process.env, LEARNER_AGENT_DIR: parentAgentDir, LEARNER_GH_PID_FILE: fakeGhPidPath, PATH: `${parentDeathDir}:${process.env.PATH || ''}` },
+        stdio: 'ignore',
+      });
+      for (let attempts = 0; attempts < 50 && !existsSync(fakeGhPidPath); attempts += 1) await new Promise((resolve) => setTimeout(resolve, 10));
+      assert.ok(existsSync(fakeGhPidPath));
+      parentGhPid = Number(readFileSync(fakeGhPidPath, 'utf8'));
+      parent.kill('SIGKILL');
+      const parentSignal = await new Promise((resolve) => parent.once('exit', (_code, signal) => resolve(signal)));
+      parentExited = true;
+      assert.equal(parentSignal, 'SIGKILL');
+      for (let attempts = 0; attempts < 50 && !parentGhExited; attempts += 1) {
+        try {
+          readFileSync(`/proc/${parentGhPid}/stat`, 'utf8');
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        } catch (error) {
+          assert.equal(error.code, 'ENOENT');
+          parentGhExited = true;
+        }
+      }
+      assert.ok(parentGhExited);
+    } finally {
+      if (parent && !parentExited) parent.kill('SIGKILL');
+      if (parentGhPid && !parentGhExited) {
+        try {
+          process.kill(parentGhPid, 'SIGKILL');
+        } catch {}
+      }
+      rmSync(parentDeathDir, { recursive: true, force: true });
+    }
+  }
+
   assert.equal(created.details.created, true);
   assert.equal(filed[0], 'https://github.com/owner/updated/issues/1');
   assert.deepEqual(ghCalls[2].slice(0, 4), ['issue', 'create', '--repo', 'owner/updated']);

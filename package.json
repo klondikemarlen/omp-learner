@@ -1,9 +1,10 @@
 {
   "name": "omp-learner",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Persistent OMP learner watchdog configuration.",
   "type": "module",
   "scripts": {
+    "build:linux-parent-death-helper": "cc -O2 -static -s -o omp-plugin/learner/bin/omp-learner-pdeath-linux-x64 omp-plugin/learner/bin/omp-learner-pdeath.c",
     "test": "node scripts/verify-learner.mjs"
   },
   "repository": {

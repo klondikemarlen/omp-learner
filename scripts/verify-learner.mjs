@@ -5,7 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { configureLearner, configurationPath, disableLearner, normalizeUpstream, readConfiguration } from '../omp-plugin/learner/config.mjs';
-import { createLearnerIssueTools, registerLearnerPlugin, resolveParentDeathLauncher } from '../omp-plugin/learner.mjs';
+import { registerLearnerPlugin } from '../omp-plugin/learner.mjs';
+import { createLearnerIssueTools, resolveParentDeathLauncher } from '../omp-plugin/learner/github-issue-adapter.mjs';
 
 const agentDir = mkdtempSync(path.join(os.tmpdir(), 'omp-learner-check-'));
 const z = { string: () => ({ optional: () => ({}) }), enum: (values) => ({ values }), object: (shape) => ({ shape }) };
@@ -423,7 +424,7 @@ process.on('SIGTERM', () => {});
 writeFileSync(process.env.LEARNER_GH_PID_FILE, String(process.pid));
 setInterval(() => {}, 1_000);
 `, { mode: 0o700 });
-      writeFileSync(parentScriptPath, `import { createLearnerIssueTools } from ${JSON.stringify(pathToFileURL(path.resolve('omp-plugin/learner.mjs')).href)};
+      writeFileSync(parentScriptPath, `import { createLearnerIssueTools } from ${JSON.stringify(pathToFileURL(path.resolve('omp-plugin/learner/github-issue-adapter.mjs')).href)};
 const z = { string: () => ({ optional: () => ({}) }), enum: () => ({}), object: () => ({}) };
 const { searchTool } = createLearnerIssueTools({ upstream: 'owner/updated', agentDir: process.env.LEARNER_AGENT_DIR, z });
 await searchTool.execute('parent-death', { category: 'project_knowledge', target: 'upstream', evidenceScope: 'maintainer_instruction', proposedRule: 'Keep commits focused', scope: 'repository' });

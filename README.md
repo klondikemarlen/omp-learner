@@ -70,6 +70,8 @@ npm run build:linux-parent-death-helper
 
 It requires a Linux x64 C toolchain with static linking support; normal plugin installation and `npm test` do not compile it.
 
+Launcher target selection is centralized in the runtime registry. It currently contains only `linux-x64`; add an artifact and one registry entry when a new platform is explicitly supported.
+
 ## Knowledge-base builder
 
 In addition to code-style, test, commit, and workflow guidance, the learner captures explicit, stable project-domain facts as `project_knowledge` proposals. The upstream issue tracker is therefore a reviewable knowledge backlog: maintainers can turn accepted issues into the repository's documentation, rules, skills, or other durable project guidance.

@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { configureLearner, configurationPath, disableLearner, normalizeUpstream, readConfiguration } from '../omp-plugin/learner/config.mjs';
-import { createLearnerIssueTools, registerLearnerPlugin } from '../omp-plugin/learner.mjs';
+import { createLearnerIssueTools, registerLearnerPlugin, resolveParentDeathLauncher } from '../omp-plugin/learner.mjs';
 
 const agentDir = mkdtempSync(path.join(os.tmpdir(), 'omp-learner-check-'));
 const z = { string: () => ({ optional: () => ({}) }), object: (shape) => ({ shape }) };
@@ -17,6 +17,10 @@ try {
 
   assert.equal(normalizeUpstream('https://github.com/owner/repository.git'), 'owner/repository');
   assert.throws(() => normalizeUpstream('owner/repository'), /HTTPS GitHub repository URL/);
+  const linuxLauncher = resolveParentDeathLauncher({ platform: 'linux', architecture: 'x64', parentPid: 42, args: ['issue', 'list'] });
+  assert.match(linuxLauncher.command, /omp-learner-pdeath-linux-x64$/);
+  assert.deepEqual(linuxLauncher.args, ['42', 'gh', 'issue', 'list']);
+  assert.deepEqual(resolveParentDeathLauncher({ platform: 'darwin', architecture: 'arm64', parentPid: 42, args: ['issue', 'list'] }), { command: 'gh', args: ['issue', 'list'] });
 
   const noModelAgentDir = mkdtempSync(path.join(os.tmpdir(), 'omp-learner-no-model-'));
   assert.equal(configureLearner(noModelAgentDir, 'https://github.com/owner/repository', setupOptions).upstream, 'owner/repository');

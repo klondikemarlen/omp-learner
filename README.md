@@ -58,6 +58,10 @@ learner_file_issue
 
 GitHub authentication is delegated to the existing `gh` CLI login. OMP Learner never persists a GitHub token, transcript, or candidate history; it retains only the enabled flag and normalized upstream repository.
 
+### Shutdown behavior
+
+On OMP's handled session shutdown (`/exit`, `/quit`, SIGINT, SIGTERM, SIGHUP, or an uncaught exception), the learner stops queued work, disposes its active watchdog session, and cancels an in-flight `gh` call. An uncatchable SIGKILL of the OMP parent while the host remains alive cannot run plugin cleanup; a `gh` child can then be reparented and is outside this plugin's portable runtime guarantee.
+
 ## Knowledge-base builder
 
 In addition to code-style, test, commit, and workflow guidance, the learner captures explicit, stable project-domain facts as `project_knowledge` proposals. The upstream issue tracker is therefore a reviewable knowledge backlog: maintainers can turn accepted issues into the repository's documentation, rules, skills, or other durable project guidance.

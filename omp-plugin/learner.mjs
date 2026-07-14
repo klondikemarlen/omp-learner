@@ -21,6 +21,7 @@ export function registerLearnerPlugin(pi, sdk) {
   if (!sdk?.createAgentSession || !sdk?.SessionManager || !sdk?.z) return;
   const watcher = createWatcher(pi, sdk);
   pi.on?.('agent_end', (event, ctx) => watcher.observe(event, ctx));
+  pi.on?.('session_shutdown', () => watcher.shutdown());
 }
 
 export function createLearnerIssueTools(options) {
@@ -42,11 +43,11 @@ function createLearnerIssueSearchTool({ upstream, agentDir, z, searchState, next
       proposedRule: z.string(),
       scope: z.string(),
     }),
-    execute: async (_toolCallId, params) => {
+    execute: async (_toolCallId, params, _onUpdate, _ctx, signal) => {
       if (!isEnabledFor(agentDir, upstream)) throw new Error('Learner issue filing is disabled.');
 
       const candidate = normalizeSearchCandidate(params);
-      const issues = JSON.parse(await runGh(['issue', 'list', '--repo', upstream, '--state', 'open', '--limit', String(MAX_OPEN_ISSUES), '--json', 'number,title,body,url']));
+      const issues = JSON.parse(await runGh(['issue', 'list', '--repo', upstream, '--state', 'open', '--limit', String(MAX_OPEN_ISSUES), '--json', 'number,title,body,url'], signal));
       const matches = new Map(issues
         .filter((issue) => Number.isInteger(issue.number) && typeof issue.url === 'string')
         .map((issue) => [String(issue.number), { number: issue.number, title: redactText(String(issue.title || '')).slice(0, 300), body: redactText(String(issue.body || '')).slice(0, 500), url: issue.url }]));
@@ -75,7 +76,7 @@ export function createLearnerIssueTool({ upstream, agentDir, z, onFiled, searchS
       existingIssueNumber: z.string().optional(),
       searchId: z.string(),
     }),
-    execute: async (_toolCallId, params) => {
+    execute: async (_toolCallId, params, _onUpdate, _ctx, signal) => {
       if (used) throw new Error('A learner run may file at most one issue.');
       if (!isEnabledFor(agentDir, upstream)) throw new Error('Learner issue filing is disabled.');
 
@@ -94,10 +95,10 @@ export function createLearnerIssueTool({ upstream, agentDir, z, onFiled, searchS
       }
 
       used = true;
-      const existing = JSON.parse(await runGh(['issue', 'list', '--repo', upstream, '--state', 'open', '--search', fingerprint, '--limit', '1', '--json', 'url']));
+      const existing = JSON.parse(await runGh(['issue', 'list', '--repo', upstream, '--state', 'open', '--search', fingerprint, '--limit', '1', '--json', 'url'], signal));
       if (existing.length > 0) return issueResult(`Existing learner issue: ${existing[0].url}`, existing[0].url, false);
 
-      const url = (await runGh(['issue', 'create', '--repo', upstream, '--title', `learner: ${candidate.proposedRule.slice(0, 100)}`, '--body', issueBody(candidate, fingerprint)])).trim();
+      const url = (await runGh(['issue', 'create', '--repo', upstream, '--title', `learner: ${candidate.proposedRule.slice(0, 100)}`, '--body', issueBody(candidate, fingerprint)], signal)).trim();
       onFiled?.(url);
       return issueResult(`Created learner issue: ${url}`, url, true);
     },
@@ -107,10 +108,16 @@ export function createLearnerIssueTool({ upstream, agentDir, z, onFiled, searchS
 function createWatcher(pi, sdk) {
   let pending;
   let running = false;
+  let drainPromise;
+  let stopping = false;
+  let activeSession;
+  let activeDisposal;
   let lastFailure;
 
   return {
     observe(event, ctx) {
+      if (stopping) return;
+
       const currentAgentDir = agentDir(pi, ctx);
       const configuration = readConfiguration(currentAgentDir);
       const transcript = renderTranscript(event?.messages);
@@ -119,19 +126,27 @@ function createWatcher(pi, sdk) {
       pending = { configuration, currentAgentDir, ctx, transcript };
       if (!running) {
         running = true;
-        void drain();
+        drainPromise = drain();
       }
+    },
+    async shutdown() {
+      stopping = true;
+      pending = undefined;
+      const activeDrain = drainPromise;
+      if (activeSession) await disposeSession(activeSession);
+      await activeDrain;
     },
   };
 
   async function drain() {
-    while (pending) {
+    while (pending && !stopping) {
       const next = pending;
       pending = undefined;
       try {
         await runWatcher(next);
         lastFailure = undefined;
       } catch (error) {
+        if (stopping) break;
         const message = error instanceof Error ? error.message : String(error);
         if (message !== lastFailure) next.ctx?.ui?.notify?.(`Learner watchdog failed: ${message}`, 'warning');
         lastFailure = message;
@@ -168,12 +183,27 @@ function createWatcher(pi, sdk) {
       sessionManager: sdk.SessionManager.inMemory(cwd),
     });
 
+    activeSession = session;
     try {
+      if (stopping) return;
       await session.setActiveToolsByName(ACTIVE_TOOLS);
       await session.prompt(transcript);
     } finally {
-      session.dispose?.();
+      await disposeSession(session);
+      if (activeSession === session) {
+        activeSession = undefined;
+        activeDisposal = undefined;
+      }
     }
+  }
+
+  function disposeSession(session) {
+    session.beginDispose?.();
+    if (activeSession === session) {
+      activeDisposal ||= Promise.resolve(session.dispose?.());
+      return activeDisposal;
+    }
+    return Promise.resolve(session.dispose?.());
   }
 }
 
@@ -294,8 +324,8 @@ function isEnabledFor(currentAgentDir, upstream) {
   return configuration.enabled && configuration.upstream === upstream;
 }
 
-async function runGitHubCli(args) {
-  const { stdout } = await execFileAsync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+async function runGitHubCli(args, signal) {
+  const { stdout } = await execFileAsync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], signal });
   return stdout;
 }
 

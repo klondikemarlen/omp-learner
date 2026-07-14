@@ -50,6 +50,10 @@ try {
   const messages = [];
   const launches = [];
   const sessions = [];
+  let holdPrompt = false;
+  let releasePrompt;
+  let holdCreation = false;
+  let releaseCreation;
   const pi = {
     pi: { getAgentDir: () => agentDir },
     registerCommand(name, command) { commands.set(name, command); },
@@ -69,17 +73,25 @@ try {
     SessionManager: { inMemory(cwd) { return { cwd }; } },
     async createAgentSession(options) {
       launches.push(options);
+      if (holdCreation) await new Promise((resolve) => { releaseCreation = resolve; });
       const session = {
         async setActiveToolsByName(names) { this.activeTools = names; },
-        async prompt(value) { this.promptValue = value; },
-        dispose() { this.disposed = true; },
+        async prompt(value) {
+          this.promptValue = value;
+          if (holdPrompt) await new Promise((resolve) => { releasePrompt = resolve; });
+        },
+        beginDispose() { this.beganDisposal = true; },
+        dispose() {
+          this.disposed = true;
+          releasePrompt?.();
+        },
       };
       sessions.push(session);
       return { session };
     },
   };
   registerLearnerPlugin(pi, sdk);
-  assert.equal(events.size, 1);
+  assert.equal(events.size, 2);
   assert.deepEqual(commands.get('learner').getArgumentCompletions('').map((item) => item.label), ['setup', 'off', 'status']);
   await commands.get('learner').handler('status', { agentDir });
   assert.match(messages.at(-1).content, /watchdog: on/);
@@ -111,7 +123,41 @@ try {
   assert.match(sessions[0].promptValue, /Keep commit messages imperative/);
   assert.doesNotMatch(sessions[0].promptValue, /ghp_abcdefghijklmnopqrstuvwxyz/);
   assert.ok(sessions[0].disposed);
-
+  holdPrompt = true;
+  events.get('agent_end')({
+    messages: [{ role: 'user', content: [{ type: 'text', text: 'Persist durable project knowledge.' }] }],
+  }, {
+    agentDir,
+    cwd: '/tmp/project',
+    model: { id: 'primary' },
+    ui: { notify: () => {} },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(sessions.length, 2);
+  await events.get('session_shutdown')();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(sessions[1].beganDisposal);
+  assert.ok(sessions[1].disposed);
+  holdCreation = true;
+  registerLearnerPlugin(pi, sdk);
+  events.get('agent_end')({
+    messages: [{ role: 'user', content: [{ type: 'text', text: 'Wait for learner startup.' }] }],
+  }, {
+    agentDir,
+    cwd: '/tmp/project',
+    model: { id: 'primary' },
+    ui: { notify: () => {} },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  const shutdownDuringCreation = events.get('session_shutdown')();
+  let shutdownSettled = false;
+  void shutdownDuringCreation.then(() => { shutdownSettled = true; });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(shutdownSettled, false);
+  releaseCreation();
+  await shutdownDuringCreation;
+  assert.ok(sessions[2].beganDisposal);
+  assert.ok(sessions[2].disposed);
   const candidate = {
     category: 'project_knowledge',
     proposedRule: 'The order pipeline retries only after the ledger transaction commits.',
@@ -150,6 +196,65 @@ try {
   assert.ok(!ghCalls[0].includes('--search'));
   assert.equal(ghCalls[0][ghCalls[0].indexOf('--limit') + 1], '1000');
   const created = await issueTool.execute('issue-1', fileParams(candidate, search.details.searchId));
+  const abortController = new AbortController();
+  let ghSignal;
+  const { searchTool: abortableSearchTool } = createLearnerIssueTools({
+    upstream: 'owner/updated',
+    agentDir,
+    z,
+    runGh: async (_args, signal) => {
+      ghSignal = signal;
+      return await new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
+    },
+  });
+  const abortedSearch = abortableSearchTool.execute('search-abort', searchParams(candidate), undefined, undefined, abortController.signal);
+  abortController.abort(new Error('parent shutdown'));
+  await assert.rejects(abortedSearch, /parent shutdown/);
+  assert.equal(ghSignal, abortController.signal);
+  const fakeGhDir = mkdtempSync(path.join(os.tmpdir(), 'omp-learner-gh-'));
+  const fakeGhPidPath = path.join(fakeGhDir, 'pid');
+  const originalPath = process.env.PATH;
+  const originalPidPath = process.env.LEARNER_GH_PID_FILE;
+  let fakeGhPid;
+  let fakeGhExited = false;
+  try {
+    writeFileSync(path.join(fakeGhDir, 'gh'), `#!/usr/bin/env node
+import { writeFileSync } from 'node:fs';
+writeFileSync(process.env.LEARNER_GH_PID_FILE, String(process.pid));
+setInterval(() => {}, 1_000);
+`, { mode: 0o700 });
+    process.env.PATH = `${fakeGhDir}:${originalPath || ''}`;
+    process.env.LEARNER_GH_PID_FILE = fakeGhPidPath;
+    const processAbortController = new AbortController();
+    const { searchTool: processAbortSearchTool } = createLearnerIssueTools({ upstream: 'owner/updated', agentDir, z });
+    const processSearch = processAbortSearchTool.execute('search-process-abort', searchParams(candidate), undefined, undefined, processAbortController.signal);
+    for (let attempts = 0; attempts < 50 && !existsSync(fakeGhPidPath); attempts += 1) await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.ok(existsSync(fakeGhPidPath));
+    fakeGhPid = Number(readFileSync(fakeGhPidPath, 'utf8'));
+    processAbortController.abort();
+    await assert.rejects(processSearch, /aborted/i);
+    for (let attempts = 0; attempts < 50 && !fakeGhExited; attempts += 1) {
+      try {
+        process.kill(fakeGhPid, 0);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      } catch (error) {
+        assert.equal(error.code, 'ESRCH');
+        fakeGhExited = true;
+      }
+    }
+    assert.ok(fakeGhExited);
+  } finally {
+    if (fakeGhPid && !fakeGhExited) {
+      try {
+        process.kill(fakeGhPid, 'SIGKILL');
+      } catch {}
+    }
+    if (originalPath === undefined) delete process.env.PATH;
+    else process.env.PATH = originalPath;
+    if (originalPidPath === undefined) delete process.env.LEARNER_GH_PID_FILE;
+    else process.env.LEARNER_GH_PID_FILE = originalPidPath;
+    rmSync(fakeGhDir, { recursive: true, force: true });
+  }
   assert.equal(created.details.created, true);
   assert.equal(filed[0], 'https://github.com/owner/updated/issues/1');
   assert.deepEqual(ghCalls[2].slice(0, 4), ['issue', 'create', '--repo', 'owner/updated']);

@@ -1,6 +1,6 @@
 # OMP Learner
 
-OMP Learner is an independent, non-blocking watchdog for explicit durable feedback and project-domain knowledge. It turns high-confidence findings into deduplicated GitHub issues in a configured upstream repository for human review.
+OMP Learner is an independent, non-blocking watchdog for explicit durable feedback and project-domain knowledge. It turns high-confidence findings into deduplicated GitHub issues in its fixed learner repository or a configured upstream repository for human review.
 
 ## Install
 
@@ -9,6 +9,14 @@ omp plugin install github:klondikemarlen/omp-learner
 ```
 
 Restart OMP after installing or reinstalling so a fresh session discovers the extension.
+
+## v1 support boundary
+
+v1 is an independent watchdog with an issue-first, human-review workflow; it is not a second advisor or an interactive candidate-review UI. Its stable lifecycle commands are `/learner setup`, `/learner off`, and `/learner status`.
+
+The watchdog files learner-local guidance against `klondikemarlen/omp-learner` and eligible shared guidance against the configured upstream repository. Closed targets and evidence scopes prevent arbitrary repositories and keep learner-local evidence self-scoped.
+
+Linux x64 is the supported abrupt-parent-death guarantee: GitHub CLI subprocesses use the packaged parent-death launcher. Other platforms execute `gh` directly and retain handled-shutdown cleanup only.
 
 ## Setup
 

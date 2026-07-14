@@ -76,7 +76,7 @@ Before searching, the watchdog classifies evidence as `learner_local`, `cross_pr
 
 ### Shutdown behavior
 
-On OMP's handled session shutdown (`/exit`, `/quit`, SIGINT, SIGTERM, SIGHUP, or an uncaught exception), the learner stops queued work, disposes its active watchdog session, and cancels an in-flight `gh` call. On Linux x64, the packaged static launcher also sets `PR_SET_PDEATHSIG` to `SIGKILL` and rechecks its parent before it executes `gh`, so the child dies if the OMP parent is abruptly killed. Other platforms use `gh` directly and retain only the handled-shutdown guarantee.
+On OMP's handled session shutdown (`/exit`, `/quit`, SIGINT, SIGTERM, SIGHUP, or an uncaught exception), the learner shutdown hook returns immediately so it does not block session closure; cleanup then stops queued work, disposes its active watchdog session, and cancels an in-flight `gh` call. On Linux x64, the packaged static launcher also sets `PR_SET_PDEATHSIG` to `SIGKILL` and rechecks its parent before it executes `gh`, so the child dies if the OMP parent is abruptly killed. Other platforms use `gh` directly and retain only the handled-shutdown guarantee.
 
 The checked-in Linux x64 launcher is built from `omp-plugin/learner/bin/omp-learner-pdeath.c` with:
 

@@ -1,6 +1,6 @@
 {
   "name": "omp-learner",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Persistent OMP learner watchdog configuration.",
   "type": "module",
   "scripts": {
@@ -17,7 +17,14 @@
     "scripts/"
   ],
   "omp": {
-    "extensions": ["./omp-plugin/index.ts"]
+    "extensions": ["./omp-plugin/index.ts"],
+    "settings": {
+      "knowledgeBaseUrl": {
+        "type": "string",
+        "default": "",
+        "description": "Optional HTTPS GitHub repository URL that may receive shared Learner guidance."
+      }
+    }
   },
   "pi": {
     "extensions": ["./omp-plugin/index.ts"]

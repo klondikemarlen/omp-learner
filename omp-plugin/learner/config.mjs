@@ -1,9 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 
-const CONFIG_VERSION = 3;
+const CONFIG_VERSION = 4;
 const LEARNER_DIR = 'learner';
 const WATCHDOG_FILE = 'WATCHDOG.yml';
 const WATCHDOG_INSTRUCTIONS_FILE = 'WATCHDOG.md';
@@ -20,10 +19,10 @@ export function configurationPath(agentDir) {
 
 export function readConfiguration(agentDir) {
   const filePath = configurationPath(agentDir);
-  if (!existsSync(filePath)) return { version: CONFIG_VERSION, enabled: false, upstream: null };
+  if (!existsSync(filePath)) return { version: CONFIG_VERSION, enabled: false };
 
   const parsed = JSON.parse(readFileSync(filePath, 'utf8'));
-  return { version: CONFIG_VERSION, enabled: Boolean(parsed.enabled), upstream: parsed.upstream || null };
+  return { version: CONFIG_VERSION, enabled: Boolean(parsed.enabled) };
 }
 
 export function normalizeUpstream(value) {
@@ -33,12 +32,10 @@ export function normalizeUpstream(value) {
   return `${match[1]}/${match[2]}`;
 }
 
-export function configureLearner(agentDir, upstreamUrl, { verifyUpstream: validateUpstream = verifyUpstream } = {}) {
-  const normalizedUpstream = normalizeUpstream(upstreamUrl);
-  const upstream = validateUpstream(normalizedUpstream) || normalizedUpstream;
+export function configureLearner(agentDir) {
   removeLegacyAdvisor(agentDir);
-  writeConfiguration(agentDir, { version: CONFIG_VERSION, enabled: true, upstream });
-  return { upstream, configPath: configurationPath(agentDir) };
+  writeConfiguration(agentDir, { version: CONFIG_VERSION, enabled: true });
+  return { configPath: configurationPath(agentDir) };
 }
 
 export function disableLearner(agentDir) {
@@ -46,15 +43,6 @@ export function disableLearner(agentDir) {
   removeLegacyAdvisor(agentDir);
 }
 
-function verifyUpstream(upstream) {
-  try {
-    const result = JSON.parse(execFileSync('gh', ['repo', 'view', upstream, '--json', 'nameWithOwner,hasIssuesEnabled'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
-    if (!result.hasIssuesEnabled) throw new Error(`Issues are disabled for ${result.nameWithOwner || upstream}.`);
-    return result.nameWithOwner;
-  } catch (error) {
-    throw new Error(error.stderr?.toString().trim() || error.message || `Cannot access ${upstream} through GitHub CLI.`);
-  }
-}
 
 function writeConfiguration(agentDir, configuration) {
   writeText(configurationPath(agentDir), `${JSON.stringify(configuration, null, 2)}\n`, 0o600);

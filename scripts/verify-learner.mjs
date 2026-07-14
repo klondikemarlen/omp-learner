@@ -145,8 +145,8 @@ try {
   });
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(sessions.length, 2);
-  await events.get('session_shutdown')();
-  await new Promise((resolve) => setImmediate(resolve));
+  const activeShutdownResult = events.get('session_shutdown')();
+  assert.equal(activeShutdownResult, undefined);
   assert.ok(sessions[1].beganDisposal);
   assert.ok(sessions[1].disposed);
   holdCreation = true;
@@ -161,12 +161,10 @@ try {
   });
   await new Promise((resolve) => setImmediate(resolve));
   const shutdownDuringCreation = events.get('session_shutdown')();
-  let shutdownSettled = false;
-  void shutdownDuringCreation.then(() => { shutdownSettled = true; });
+  assert.equal(shutdownDuringCreation, undefined);
   await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(shutdownSettled, false);
   releaseCreation();
-  await shutdownDuringCreation;
+  await new Promise((resolve) => setImmediate(resolve));
   assert.ok(sessions[2].beganDisposal);
   assert.ok(sessions[2].disposed);
   const candidate = {

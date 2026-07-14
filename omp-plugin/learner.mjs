@@ -30,7 +30,7 @@ export function registerLearnerPlugin(pi, sdk) {
   if (!sdk?.createAgentSession || !sdk?.SessionManager || !sdk?.z) return;
   const watcher = createWatcher(pi, sdk);
   pi.on?.('agent_end', (event, ctx) => watcher.observe(event, ctx));
-  pi.on?.('session_shutdown', () => watcher.shutdown());
+  pi.on?.('session_shutdown', () => { void watcher.shutdown().catch(() => {}); });
 }
 
 export function createLearnerIssueTools(options) {

@@ -37,6 +37,7 @@ function createLearnerIssueSearchTool({ upstream, agentDir, z, searchState, next
       proposedRule: z.string(),
       scope: z.string(),
       evidenceScope: z.enum(['learner_local', 'cross_project', 'organization_policy', 'maintainer_instruction']),
+      provenance: z.string(),
     }),
     execute: async (_toolCallId, params, _onUpdate, _ctx, signal) => {
       if (!isEnabledFor(agentDir)) throw new Error('Learner issue filing is disabled.');
@@ -67,7 +68,6 @@ export function createLearnerIssueTool({ upstream, agentDir, z, onFiled, searchS
     approval: 'write',
     parameters: z.object({
       evidence: z.string(),
-      provenance: z.string(),
       confidence: z.string(),
       existingIssueNumber: z.string().optional(),
       searchId: z.string(),
@@ -112,7 +112,6 @@ function normalizeCandidate(params, searchCandidate) {
   return {
     ...searchCandidate,
     evidence: redactText(clean(params.evidence, 2_000)),
-    provenance: redactText(clean(params.provenance, 500)),
     confidence,
   };
 }
@@ -121,18 +120,25 @@ function normalizeSearchCandidate(params) {
   const category = clean(params.category, 80);
   const target = clean(params.target, 80);
   const evidenceScope = clean(params.evidenceScope, 80);
+  const provenance = redactText(clean(params.provenance, 500));
   if (!CATEGORIES.has(category)) throw new Error('Learner category is not eligible for issue search.');
   if (!EVIDENCE_SCOPES.has(evidenceScope)) throw new Error('Learner evidence scope is not eligible for issue search.');
   if (target === 'upstream' && evidenceScope === 'learner_local') throw new Error('Learner-local evidence must target the learner repository.');
   if (target === 'learner' && UPSTREAM_ONLY_CATEGORIES.has(category)) throw new Error('Cross-project guidance must target the configured upstream repository.');
   if (target === 'upstream' && LEARNER_RUNTIME_CATEGORIES.has(category)) throw new Error('Learner runtime bug or feature categories must target the learner repository.');
+  if (LEARNER_RUNTIME_CATEGORIES.has(category) && !hasLearnerRuntimeSource(provenance)) throw new Error('Learner runtime candidates must cite a concrete OMP Learner source before issue search.');
   return {
     category,
     target,
     evidenceScope,
     proposedRule: clean(params.proposedRule, 500),
     scope: clean(params.scope, 250),
+    provenance,
   };
+}
+
+function hasLearnerRuntimeSource(provenance) {
+  return /(?:^|[\s`])omp-plugin\/|(?:^|[\s`])scripts\/verify-learner\.mjs\b|(?:^|[\s`/])learner\/config\.json\b|Learner (?:watchdog failed|status):/i.test(provenance);
 }
 
 function resolveIssueRepository(target, upstream) {

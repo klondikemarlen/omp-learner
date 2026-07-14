@@ -155,7 +155,7 @@ try {
   assert.equal(launches[0].autoApprove, true);
   assert.deepEqual(launches[0].customTools.map((tool) => tool.name), ['learner_search_issues', 'learner_file_issue']);
   assert.deepEqual(sessions[0].activeTools, ['read', 'grep', 'glob', 'learner_search_issues', 'learner_file_issue']);
-  assert.match(launches[0].systemPrompt, /call learner_search_issues exactly once before learner_file_issue/);
+  assert.match(launches[0].systemPrompt, /call learner_search_issues exactly once with evidenceScope and exact visible provenance before learner_file_issue/);
   assert.match(launches[0].systemPrompt, /Select at most one strongest explicit candidate/);
   assert.match(launches[0].systemPrompt, /prioritize the OMP Learner-scoped candidate/);
   assert.match(launches[0].systemPrompt, /Learner-local evidence must target learner/);
@@ -231,10 +231,9 @@ try {
     provenance: 'User message in the completed turn. token: ghp_abcdefghijklmnopqrstuvwxyz',
     confidence: 'high',
   };
-  const searchParams = ({ category, target, evidenceScope, proposedRule, scope }) => ({ category, target, evidenceScope, proposedRule, scope });
+  const searchParams = ({ category, target, evidenceScope, proposedRule, scope, provenance }) => ({ category, target, evidenceScope, proposedRule, scope, provenance });
   const fileParams = (source, searchId, extras = {}) => ({
     evidence: source.evidence,
-    provenance: source.provenance,
     confidence: source.confidence,
     searchId,
     ...extras,
@@ -255,6 +254,8 @@ try {
   assert.ok(issueTool.parameters.shape.existingIssueNumber);
   assert.ok(issueTool.parameters.shape.searchId);
   assert.equal(issueTool.parameters.shape.proposedRule, undefined);
+  assert.equal(issueTool.parameters.shape.provenance, undefined);
+  assert.ok(searchTool.parameters.shape.provenance);
   assert.deepEqual(searchTool.parameters.shape.target.values, ['upstream', 'learner']);
   assert.deepEqual(searchTool.parameters.shape.evidenceScope.values, ['learner_local', 'cross_project', 'organization_policy', 'maintainer_instruction']);
   const search = await searchTool.execute('search-1', searchParams(candidate));
@@ -272,6 +273,28 @@ try {
   const created = await issueTool.execute('issue-1', fileParams(candidate, search.details.searchId));
   assert.equal(created.details.created, true);
   assert.match(ghCalls.at(-1)[ghCalls.at(-1).indexOf('--body') + 1], /Evidence scope:\*\* maintainer_instruction/);
+  const externalToolCalls = [];
+  const { searchTool: externalToolSearch } = createLearnerIssueTools({
+    upstream: 'owner/updated',
+    agentDir,
+    z,
+    runGh: async (args) => {
+      externalToolCalls.push(args);
+      return '[]';
+    },
+  });
+  const externalToolFailure = {
+    category: 'learner_bug',
+    target: 'learner',
+    evidenceScope: 'learner_local',
+    proposedRule: 'Tool discovery must return relevant tools.',
+    scope: 'tool discovery runtime behavior',
+    evidence: 'A tool-discovery query returned unrelated tools and no relevant match.',
+    provenance: 'OMP Learner runtime: scripts/tool-discovery.mjs external tool output.',
+    confidence: 'high',
+  };
+  await assert.rejects(externalToolSearch.execute('search-external-tool-failure', searchParams(externalToolFailure)), /must cite a concrete OMP Learner source/);
+  assert.equal(externalToolCalls.length, 0);
   for (const runtimeCandidate of [
     {
       category: 'learner_bug',
@@ -280,7 +303,7 @@ try {
       proposedRule: 'Terminate learner GitHub CLI children after abrupt parent death.',
       scope: 'learner subprocess supervision',
       evidence: 'A fake GitHub CLI child survives parent SIGKILL until supervised.',
-      provenance: 'Focused lifecycle regression.',
+      provenance: 'omp-plugin/learner/github-issue-adapter.mjs lifecycle regression.',
       confidence: 'high',
     },
     {
@@ -290,7 +313,7 @@ try {
       proposedRule: 'Route learner runtime proposals to the learner repository.',
       scope: 'learner issue filing',
       evidence: 'Runtime proposals currently require a fixed self-repository destination.',
-      provenance: 'User request for learner self-proposals.',
+      provenance: 'omp-plugin/learner/github-issue-adapter.mjs issue routing.',
       confidence: 'high',
     },
     {
@@ -443,7 +466,7 @@ setInterval(() => {}, 1_000);
       writeFileSync(parentScriptPath, `import { createLearnerIssueTools } from ${JSON.stringify(pathToFileURL(path.resolve('omp-plugin/learner/github-issue-adapter.mjs')).href)};
 const z = { string: () => ({ optional: () => ({}) }), enum: () => ({}), object: () => ({}) };
 const { searchTool } = createLearnerIssueTools({ upstream: 'owner/updated', agentDir: process.env.LEARNER_AGENT_DIR, z });
-await searchTool.execute('parent-death', { category: 'project_knowledge', target: 'upstream', evidenceScope: 'maintainer_instruction', proposedRule: 'Keep commits focused', scope: 'repository' });
+await searchTool.execute('parent-death', { category: 'project_knowledge', target: 'upstream', evidenceScope: 'maintainer_instruction', proposedRule: 'Keep commits focused', scope: 'repository', provenance: 'parent.mjs integration test' });
 `);
       parent = spawn(process.execPath, [parentScriptPath], {
         env: { ...process.env, LEARNER_AGENT_DIR: parentAgentDir, LEARNER_GH_PID_FILE: fakeGhPidPath, PATH: `${parentDeathDir}:${process.env.PATH || ''}` },

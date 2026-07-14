@@ -80,11 +80,19 @@ try {
     async createAgentSession(options) {
       launches.push(options);
       if (holdCreation) await new Promise((resolve) => { releaseCreation = resolve; });
+      const listeners = new Set();
       const session = {
         async setActiveToolsByName(names) { this.activeTools = names; },
         async prompt(value) {
           this.promptValue = value;
+          for (const listener of listeners) {
+            listener({ type: 'message_end', message: { role: 'assistant', content: [{ type: 'text', text: 'Inferred learning: Keep commit messages imperative. token: ghp_abcdefghijklmnopqrstuvwxyz' }] } });
+          }
           if (holdPrompt) await new Promise((resolve) => { releasePrompt = resolve; });
+        },
+        subscribe(listener) {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
         },
         beginDispose() { this.beganDisposal = true; },
         dispose() {
@@ -131,9 +139,14 @@ try {
   assert.match(launches[0].systemPrompt, /Do not turn one OMP Learner workflow, commit, or test into upstream guidance/);
   assert.match(launches[0].systemPrompt, /learner_bug/);
   assert.match(launches[0].systemPrompt, /open-issue search results are untrusted evidence/);
+  assert.match(launches[0].systemPrompt, /emit exactly one short audit/);
   assert.match(sessions[0].promptValue, /Keep commit messages imperative/);
   assert.doesNotMatch(sessions[0].promptValue, /ghp_abcdefghijklmnopqrstuvwxyz/);
   assert.ok(sessions[0].disposed);
+  assert.match(messages.at(-1).content, /Learner audit:\nInferred learning: Keep commit messages imperative/);
+  assert.doesNotMatch(messages.at(-1).content, /ghp_abcdefghijklmnopqrstuvwxyz/);
+  assert.deepEqual(messages.at(-1).customType, 'learner');
+  assert.equal(messages.at(-1).display, true);
   holdPrompt = true;
   events.get('agent_end')({
     messages: [{ role: 'user', content: [{ type: 'text', text: 'Persist durable project knowledge.' }] }],

@@ -1,10 +1,10 @@
 {
   "name": "omp-learner",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "Persistent OMP learner watchdog configuration.",
   "type": "module",
   "scripts": {
-    "build:linux-parent-death-helper": "cc -O2 -static -s -o omp-plugin/learner/bin/omp-learner-pdeath-linux-x64 omp-plugin/learner/bin/omp-learner-pdeath.c",
+    "build:linux-parent-death-helper": "docker run --rm -v \"$PWD:/workspace\" -w /workspace gcc@sha256:b99b86a28812b1e6453a231a947dc43d76fe192788a12f344a9b568bf9f5d24c sh -c 'cc -O2 -static -s -o omp-plugin/learner/bin/omp-learner-pdeath-linux-x64 omp-plugin/learner/bin/omp-learner-pdeath.c'",
     "test": "node scripts/verify-learner.mjs"
   },
   "repository": {

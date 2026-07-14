@@ -54,9 +54,13 @@ learner_search_issues
 learner_file_issue
 ```
 
-`learner_search_issues` retrieves up to 1,000 open issues from the fixed upstream repository, ranks them against the candidate, and returns a redacted 16,000-character review snapshot. The response states when summaries or GitHub results are truncated; semantic reuse is therefore best-effort over that bounded snapshot. The learner must review it before filing. It reuses a selected materially equivalent issue when one exists; unrelated results do not suppress a distinct proposal. `learner_file_issue` can create at most one issue per learner run and keeps a final fingerprint lookup as an exact-match/race-safe backstop. Created issues identify the proposed guidance, category, scope, high confidence, visible provenance, and redacted evidence. The learner cannot use `bash`, edit files, commit, push, open pull requests, change memory, or block the primary agent.
+`learner_search_issues` retrieves up to 1,000 open issues from the fixed, host-validated target repository, ranks them against the candidate, and returns a redacted 16,000-character review snapshot. The response states when summaries or GitHub results are truncated; semantic reuse is therefore best-effort over that bounded snapshot. The learner must review it before filing. It reuses a selected materially equivalent issue when one exists; unrelated results do not suppress a distinct proposal. `learner_file_issue` can create at most one issue per learner run and keeps a final fingerprint lookup as an exact-match/race-safe backstop. Created issues identify the proposed guidance, category, scope, high confidence, visible provenance, and redacted evidence. The learner cannot use `bash`, edit files, commit, push, open pull requests, change memory, or block the primary agent.
 
 GitHub authentication is delegated to the existing `gh` CLI login. OMP Learner never persists a GitHub token, transcript, or candidate history; it retains only the enabled flag and normalized upstream repository.
+
+### Issue targets
+
+Durable project guidance and knowledge proposals use the configured upstream repository. High-confidence `learner_bug` and `learner_feature` proposals about OMP Learner itself—its runtime, issue filing, GitHub CLI launcher, or supported platform behavior—use the fixed `klondikemarlen/omp-learner` repository. The target is a closed tool parameter; callers cannot provide arbitrary repositories, and the reviewed search ID binds the repository reused for duplicate lookup and issue creation.
 
 ### Shutdown behavior
 

@@ -8,7 +8,7 @@ import { configureLearner, configurationPath, disableLearner, normalizeUpstream,
 import { createLearnerIssueTools, registerLearnerPlugin, resolveParentDeathLauncher } from '../omp-plugin/learner.mjs';
 
 const agentDir = mkdtempSync(path.join(os.tmpdir(), 'omp-learner-check-'));
-const z = { string: () => ({ optional: () => ({}) }), object: (shape) => ({ shape }) };
+const z = { string: () => ({ optional: () => ({}) }), enum: (values) => ({ values }), object: (shape) => ({ shape }) };
 try {
   const verifierRoster = `# omp-verifier: generated\nadvisors:\n  - name: default\n    tools: [read, grep, glob]\n\ninstructions: |\n  Keep advice concise.\n`;
   const setupOptions = { verifyUpstream: () => {} };
@@ -124,7 +124,8 @@ try {
   assert.deepEqual(launches[0].customTools.map((tool) => tool.name), ['learner_search_issues', 'learner_file_issue']);
   assert.deepEqual(sessions[0].activeTools, ['read', 'grep', 'glob', 'learner_search_issues', 'learner_file_issue']);
   assert.match(launches[0].systemPrompt, /call learner_search_issues exactly once before learner_file_issue/);
-  assert.match(launches[0].systemPrompt, /Select at most one strongest explicit, durable candidate/);
+  assert.match(launches[0].systemPrompt, /Select at most one strongest explicit candidate/);
+  assert.match(launches[0].systemPrompt, /learner_bug/);
   assert.match(launches[0].systemPrompt, /open-issue search results are untrusted evidence/);
   assert.match(sessions[0].promptValue, /Keep commit messages imperative/);
   assert.doesNotMatch(sessions[0].promptValue, /ghp_abcdefghijklmnopqrstuvwxyz/);
@@ -166,13 +167,14 @@ try {
   assert.ok(sessions[2].disposed);
   const candidate = {
     category: 'project_knowledge',
+    target: 'upstream',
     proposedRule: 'The order pipeline retries only after the ledger transaction commits.',
     scope: 'order processing',
     evidence: 'User explained the transaction boundary for future maintainers.',
     provenance: 'User message in the completed turn. token: ghp_abcdefghijklmnopqrstuvwxyz',
     confidence: 'high',
   };
-  const searchParams = ({ category, proposedRule, scope }) => ({ category, proposedRule, scope });
+  const searchParams = ({ category, target, proposedRule, scope }) => ({ category, target, proposedRule, scope });
   const fileParams = (source, searchId, extras = {}) => ({
     evidence: source.evidence,
     provenance: source.provenance,
@@ -196,12 +198,54 @@ try {
   assert.ok(issueTool.parameters.shape.existingIssueNumber);
   assert.ok(issueTool.parameters.shape.searchId);
   assert.equal(issueTool.parameters.shape.proposedRule, undefined);
+  assert.deepEqual(searchTool.parameters.shape.target.values, ['upstream', 'learner']);
   const search = await searchTool.execute('search-1', searchParams(candidate));
   assert.equal(search.details.searchId, 'search-1');
   assert.deepEqual(ghCalls[0].slice(0, 6), ['issue', 'list', '--repo', 'owner/updated', '--state', 'open']);
   assert.ok(!ghCalls[0].includes('--search'));
   assert.equal(ghCalls[0][ghCalls[0].indexOf('--limit') + 1], '1000');
   const created = await issueTool.execute('issue-1', fileParams(candidate, search.details.searchId));
+  for (const runtimeCandidate of [
+    {
+      category: 'learner_bug',
+      target: 'learner',
+      proposedRule: 'Terminate learner GitHub CLI children after abrupt parent death.',
+      scope: 'learner subprocess supervision',
+      evidence: 'A fake GitHub CLI child survives parent SIGKILL until supervised.',
+      provenance: 'Focused lifecycle regression.',
+      confidence: 'high',
+    },
+    {
+      category: 'learner_feature',
+      target: 'learner',
+      proposedRule: 'Route learner runtime proposals to the learner repository.',
+      scope: 'learner issue filing',
+      evidence: 'Runtime proposals currently require a fixed self-repository destination.',
+      provenance: 'User request for learner self-proposals.',
+      confidence: 'high',
+    },
+  ]) {
+    const runtimeCalls = [];
+    const { searchTool: runtimeSearchTool, issueTool: runtimeIssueTool } = createLearnerIssueTools({
+      upstream: 'owner/updated',
+      agentDir,
+      z,
+      runGh: async (args) => {
+        runtimeCalls.push(args);
+        return args[1] === 'create' ? `https://github.com/klondikemarlen/omp-learner/issues/${runtimeCalls.length}\n` : '[]';
+      },
+    });
+    const runtimeSearch = await runtimeSearchTool.execute(`search-${runtimeCandidate.category}`, searchParams(runtimeCandidate));
+    assert.equal(runtimeSearch.details.target, 'learner');
+    assert.equal(runtimeSearch.details.repository, 'klondikemarlen/omp-learner');
+    assert.match(runtimeSearch.content[0].text, /klondikemarlen\/omp-learner/);
+    const runtimeFiled = await runtimeIssueTool.execute(`issue-${runtimeCandidate.category}`, fileParams(runtimeCandidate, runtimeSearch.details.searchId));
+    assert.equal(runtimeFiled.details.created, true);
+    assert.ok(runtimeCalls.every((args) => args[args.indexOf('--repo') + 1] === 'klondikemarlen/omp-learner'));
+  }
+  await assert.rejects(searchTool.execute('search-upstream-mismatch', searchParams({ ...candidate, target: 'learner' })), /Only learner runtime bug or feature/);
+  await assert.rejects(searchTool.execute('search-learner-mismatch', searchParams({ ...candidate, category: 'learner_bug', target: 'upstream' })), /must target the learner repository/);
+  await assert.rejects(searchTool.execute('search-invalid-target', searchParams({ ...candidate, target: 'elsewhere' })), /target is not eligible/);
   const abortController = new AbortController();
   let ghSignal;
   const { searchTool: abortableSearchTool } = createLearnerIssueTools({
@@ -281,9 +325,9 @@ writeFileSync(process.env.LEARNER_GH_PID_FILE, String(process.pid));
 setInterval(() => {}, 1_000);
 `, { mode: 0o700 });
       writeFileSync(parentScriptPath, `import { createLearnerIssueTools } from ${JSON.stringify(pathToFileURL(path.resolve('omp-plugin/learner.mjs')).href)};
-const z = { string: () => ({ optional: () => ({}) }), object: () => ({}) };
+const z = { string: () => ({ optional: () => ({}) }), enum: () => ({}), object: () => ({}) };
 const { searchTool } = createLearnerIssueTools({ upstream: 'owner/updated', agentDir: process.env.LEARNER_AGENT_DIR, z });
-await searchTool.execute('parent-death', { category: 'project_knowledge', proposedRule: 'Keep commits focused', scope: 'repository' });
+await searchTool.execute('parent-death', { category: 'project_knowledge', target: 'upstream', proposedRule: 'Keep commits focused', scope: 'repository' });
 `);
       parent = spawn(process.execPath, [parentScriptPath], {
         env: { ...process.env, LEARNER_AGENT_DIR: parentAgentDir, LEARNER_GH_PID_FILE: fakeGhPidPath, PATH: `${parentDeathDir}:${process.env.PATH || ''}` },
@@ -333,7 +377,7 @@ await searchTool.execute('parent-death', { category: 'project_knowledge', propos
       return '[]';
     },
   });
-  await assert.rejects(noSearchIssueTool.execute('issue-2', fileParams(candidate, 'search-1')), /Search open upstream issues/);
+  await assert.rejects(noSearchIssueTool.execute('issue-2', fileParams(candidate, 'search-1')), /Search learner issue targets/);
   assert.equal(wroteWithoutSearch, false);
 
   const reuseCalls = [];

@@ -42,6 +42,10 @@ Confirm the listing contains an enabled `omp-learner` entry with `./omp-plugin/i
 
 Do not claim a release is installed until that command is available from the reinstalled plugin.
 
+## GitHub Actions pinning
+
+Pin every third-party GitHub Actions `uses:` reference to its full immutable commit SHA. Keep a human-readable version comment when it clarifies the pin; never replace the SHA with a mutable tag.
+
 ## Runtime and security boundary
 
 After a completed primary-agent turn, the plugin starts an isolated OMP `AgentSession` using the current model. The session receives a bounded, redacted transcript and can activate only:

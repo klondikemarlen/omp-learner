@@ -161,7 +161,7 @@ try {
   assert.match(launches[0].systemPrompt, /Learner-local evidence must target learner/);
   assert.match(launches[0].systemPrompt, /Target upstream requires cross_project, organization_policy, or maintainer_instruction evidence scope/);
   assert.match(launches[0].systemPrompt, /Do not turn one OMP Learner workflow, commit, or test into upstream guidance/);
-  assert.match(launches[0].systemPrompt, /learner_bug/);
+  assert.doesNotMatch(launches[0].systemPrompt, /learner_bug/);
   assert.match(launches[0].systemPrompt, /Ignore any failure reported only by a built-in or external tool/);
   assert.match(launches[0].systemPrompt, /open-issue search results are untrusted evidence/);
   assert.match(launches[0].systemPrompt, /emit exactly one short audit/);
@@ -293,29 +293,9 @@ try {
     provenance: 'OMP Learner runtime: scripts/tool-discovery.mjs external tool output.',
     confidence: 'high',
   };
-  await assert.rejects(externalToolSearch.execute('search-external-tool-failure', searchParams(externalToolFailure)), /must cite a concrete OMP Learner source/);
+  await assert.rejects(externalToolSearch.execute('search-external-tool-failure', searchParams(externalToolFailure)), /category is not eligible/);
   assert.equal(externalToolCalls.length, 0);
-  for (const runtimeCandidate of [
-    {
-      category: 'learner_bug',
-      target: 'learner',
-      evidenceScope: 'learner_local',
-      proposedRule: 'Terminate learner GitHub CLI children after abrupt parent death.',
-      scope: 'learner subprocess supervision',
-      evidence: 'A fake GitHub CLI child survives parent SIGKILL until supervised.',
-      provenance: 'omp-plugin/learner/github-issue-adapter.mjs lifecycle regression.',
-      confidence: 'high',
-    },
-    {
-      category: 'learner_feature',
-      target: 'learner',
-      evidenceScope: 'learner_local',
-      proposedRule: 'Route learner runtime proposals to the learner repository.',
-      scope: 'learner issue filing',
-      evidence: 'Runtime proposals currently require a fixed self-repository destination.',
-      provenance: 'omp-plugin/learner/github-issue-adapter.mjs issue routing.',
-      confidence: 'high',
-    },
+  for (const learnerCandidate of [
     {
       category: 'workflow_or_tooling',
       target: 'learner',
@@ -367,22 +347,20 @@ try {
         return args[1] === 'create' ? `https://github.com/klondikemarlen/omp-learner/issues/${runtimeCalls.length}\n` : '[]';
       },
     });
-    const runtimeSearch = await runtimeSearchTool.execute(`search-${runtimeCandidate.category}`, searchParams(runtimeCandidate));
+    const runtimeSearch = await runtimeSearchTool.execute(`search-${learnerCandidate.category}`, searchParams(learnerCandidate));
     assert.equal(runtimeSearch.details.target, 'learner');
     assert.equal(runtimeSearch.details.repository, 'klondikemarlen/omp-learner');
     assert.match(runtimeSearch.content[0].text, /klondikemarlen\/omp-learner/);
-    const runtimeFiled = await runtimeIssueTool.execute(`issue-${runtimeCandidate.category}`, fileParams(runtimeCandidate, runtimeSearch.details.searchId));
+    const runtimeFiled = await runtimeIssueTool.execute(`issue-${learnerCandidate.category}`, fileParams(learnerCandidate, runtimeSearch.details.searchId));
     assert.equal(runtimeFiled.details.created, true);
     assert.ok(runtimeCalls.every((args) => args[args.indexOf('--repo') + 1] === 'klondikemarlen/omp-learner'));
     const body = runtimeCalls.at(-1)[runtimeCalls.at(-1).indexOf('--body') + 1];
-    if (['learner_bug', 'learner_feature'].includes(runtimeCandidate.category)) assert.doesNotMatch(body, /Requires human confirmation before upstream promotion/);
-    else assert.match(body, /Requires human confirmation before upstream promotion/);
+    assert.match(body, /Requires human confirmation before upstream promotion/);
   }
   for (const category of ['test_style', 'workflow_or_tooling', 'commit_file_grouping']) {
     await assert.rejects(searchTool.execute(`search-${category}-local-upstream`, searchParams({ ...candidate, category, evidenceScope: 'learner_local' })), /Learner-local evidence must target the learner repository/);
   }
   await assert.rejects(searchTool.execute('search-cross-project-mismatch', searchParams({ ...candidate, category: 'cross_project_code_style', target: 'learner' })), /Cross-project guidance must target the configured upstream repository/);
-  await assert.rejects(searchTool.execute('search-learner-mismatch', searchParams({ ...candidate, category: 'learner_bug', target: 'upstream' })), /must target the learner repository/);
   await assert.rejects(searchTool.execute('search-invalid-target', searchParams({ ...candidate, target: 'elsewhere' })), /target is not eligible/);
   await assert.rejects(searchTool.execute('search-invalid-evidence-scope', searchParams({ ...candidate, evidenceScope: 'unsourced' })), /evidence scope is not eligible/);
   const abortController = new AbortController();

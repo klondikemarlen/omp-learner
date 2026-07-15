@@ -83,7 +83,7 @@ GitHub authentication is delegated to the existing `gh` CLI login. OMP Learner n
 
 ### Issue targets
 
-Before searching, the watchdog classifies evidence as `learner_local`, `cross_project`, `organization_policy`, or `maintainer_instruction`. Evidence exclusively from OMP Learner’s repository, runtime, commits, workflows, tests, or docs is `learner_local` and must use the fixed `klondikemarlen/omp-learner` repository; reusable-sounding prose does not change that. The configured knowledge-base repository is available only with cited cross-project evidence, an explicit organization policy source, or maintainer instruction. The target and evidence scope are closed tool parameters; callers cannot provide arbitrary repositories, and the reviewed search ID binds the repository reused for duplicate lookup and issue creation.
+Before searching, the watchdog classifies evidence as `learner_local`, `cross_project`, `organization_policy`, or `maintainer_instruction`. Evidence exclusively from OMP Learner’s repository, commits, workflows, tests, or docs is `learner_local` and must use the fixed `klondikemarlen/omp-learner` repository; reusable-sounding prose does not change that. Host-tool failures and ordinary bug or feature requests are not learner candidates. The configured knowledge-base repository is available only with cited cross-project evidence, an explicit organization policy source, or maintainer instruction. The target and evidence scope are closed tool parameters; callers cannot provide arbitrary repositories, and the reviewed search ID binds the repository reused for duplicate lookup and issue creation.
 
 ### Shutdown behavior
 

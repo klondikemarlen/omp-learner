@@ -5,8 +5,7 @@ import { promisify } from 'node:util';
 import { readConfiguration } from './config.mjs';
 
 const UPSTREAM_CATEGORIES = new Set(['project_code_style', 'cross_project_code_style', 'test_style', 'commit_message_style', 'commit_file_grouping', 'workflow_or_tooling', 'project_knowledge']);
-const LEARNER_RUNTIME_CATEGORIES = new Set(['learner_bug', 'learner_feature']);
-const CATEGORIES = new Set([...UPSTREAM_CATEGORIES, ...LEARNER_RUNTIME_CATEGORIES]);
+const CATEGORIES = new Set([...UPSTREAM_CATEGORIES]);
 const UPSTREAM_ONLY_CATEGORIES = new Set(['cross_project_code_style']);
 const EVIDENCE_SCOPES = new Set(['learner_local', 'cross_project', 'organization_policy', 'maintainer_instruction']);
 const LEARNER_REPOSITORY = 'klondikemarlen/omp-learner';
@@ -125,8 +124,6 @@ function normalizeSearchCandidate(params) {
   if (!EVIDENCE_SCOPES.has(evidenceScope)) throw new Error('Learner evidence scope is not eligible for issue search.');
   if (target === 'upstream' && evidenceScope === 'learner_local') throw new Error('Learner-local evidence must target the learner repository.');
   if (target === 'learner' && UPSTREAM_ONLY_CATEGORIES.has(category)) throw new Error('Cross-project guidance must target the configured upstream repository.');
-  if (target === 'upstream' && LEARNER_RUNTIME_CATEGORIES.has(category)) throw new Error('Learner runtime bug or feature categories must target the learner repository.');
-  if (LEARNER_RUNTIME_CATEGORIES.has(category) && !hasLearnerRuntimeSource(provenance)) throw new Error('Learner runtime candidates must cite a concrete OMP Learner source before issue search.');
   return {
     category,
     target,
@@ -137,9 +134,6 @@ function normalizeSearchCandidate(params) {
   };
 }
 
-function hasLearnerRuntimeSource(provenance) {
-  return /(?:^|[\s`])omp-plugin\/|(?:^|[\s`])scripts\/verify-learner\.mjs\b|(?:^|[\s`/])learner\/config\.json\b|Learner (?:watchdog failed|status):/i.test(provenance);
-}
 
 function resolveIssueRepository(target, upstream) {
   if (target === 'learner') return LEARNER_REPOSITORY;
@@ -200,7 +194,7 @@ function createFingerprint(candidate) {
 }
 
 function issueBody(candidate, fingerprint) {
-  const promotionNote = candidate.evidenceScope === 'learner_local' && !LEARNER_RUNTIME_CATEGORIES.has(candidate.category) ? '\n\n> Requires human confirmation before upstream promotion.' : '';
+  const promotionNote = candidate.evidenceScope === 'learner_local' ? '\n\n> Requires human confirmation before upstream promotion.' : '';
   return `## Learner proposal\n\n${candidate.proposedRule}\n\n- **Category:** ${candidate.category}\n- **Scope:** ${candidate.scope}\n- **Evidence scope:** ${candidate.evidenceScope}\n- **Confidence:** ${candidate.confidence}\n- **Provenance:** ${candidate.provenance}\n\n## Evidence\n\n${candidate.evidence}${promotionNote}\n\n<!-- omp-learner:${fingerprint} -->`;
 }
 

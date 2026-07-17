@@ -137,6 +137,7 @@ try {
   assert.match(messages.at(-1).content, /enabled for owner\/knowledge/);
   await commands.get('learner').handler('status', { agentDir, cwd: '/tmp/project' });
   assert.match(messages.at(-1).content, /knowledge base: owner\/knowledge/);
+  knowledgeBaseUrl = '';
 
   events.get('agent_end')({
     messages: [
@@ -169,6 +170,7 @@ try {
   assert.match(launches[0].systemPrompt, /open-issue search results are untrusted evidence/);
   assert.match(launches[0].systemPrompt, /emit exactly one short audit/);
   assert.match(launches[0].systemPrompt, /configured knowledge-base repository/);
+  assert.match(launches[0].systemPrompt, /watchdog for klondikemarlen\/omp-learner/);
   assert.match(sessions[0].promptValue, /Keep commit messages imperative/);
   assert.doesNotMatch(sessions[0].promptValue, /ghp_abcdefghijklmnopqrstuvwxyz/);
   assert.ok(sessions[0].disposed);

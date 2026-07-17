@@ -1,6 +1,6 @@
 {
   "name": "omp-learner",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Persistent OMP learner watchdog configuration.",
   "type": "module",
   "scripts": {
@@ -21,7 +21,7 @@
     "settings": {
       "knowledgeBaseUrl": {
         "type": "string",
-        "default": "",
+        "default": "https://github.com/klondikemarlen/omp-learner",
         "description": "Optional HTTPS GitHub repository URL that may receive shared Learner guidance."
       }
     }

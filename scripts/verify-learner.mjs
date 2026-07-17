@@ -20,7 +20,7 @@ try {
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.deepEqual(manifest.omp.settings.knowledgeBaseUrl, {
     type: 'string',
-    default: '',
+    default: 'https://github.com/klondikemarlen/omp-learner',
     description: 'Optional HTTPS GitHub repository URL that may receive shared Learner guidance.',
   });
   const linuxLauncher = resolveParentDeathLauncher({ platform: 'linux', architecture: 'x64', parentPid: 42, args: ['issue', 'list'] });
@@ -74,7 +74,7 @@ try {
   });
   assert.ok(fallbackCommands.has('learner'));
   assert.equal(fallbackEvents, 0);
-  let knowledgeBaseUrl = 'https://github.com/owner/updated';
+  let knowledgeBaseUrl = 'https://github.com/klondikemarlen/omp-learner';
   let knowledgeBaseWrite;
   const sdk = {
     z,
@@ -121,7 +121,7 @@ try {
   await commands.get('learner').handler('status', { agentDir });
   assert.match(messages.at(-1).content, /watchdog: on/);
   assert.match(messages.at(-1).content, /knowledge capture: automatic/);
-  assert.match(messages.at(-1).content, /knowledge base: owner\/updated/);
+  assert.match(messages.at(-1).content, /knowledge base: klondikemarlen\/omp-learner/);
   disableLearner(agentDir);
   knowledgeBaseWrite = undefined;
   await commands.get('learner').handler('setup', { agentDir, cwd: '/tmp/project' });
@@ -137,7 +137,7 @@ try {
   assert.match(messages.at(-1).content, /enabled for owner\/knowledge/);
   await commands.get('learner').handler('status', { agentDir, cwd: '/tmp/project' });
   assert.match(messages.at(-1).content, /knowledge base: owner\/knowledge/);
-  knowledgeBaseUrl = '';
+  knowledgeBaseUrl = 'https://github.com/klondikemarlen/omp-learner';
 
   events.get('agent_end')({
     messages: [

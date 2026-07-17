@@ -1,6 +1,6 @@
 {
   "name": "omp-learner",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "Persistent OMP learner watchdog configuration.",
   "type": "module",
   "scripts": {

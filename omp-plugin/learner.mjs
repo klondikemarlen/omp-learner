@@ -19,6 +19,20 @@ export function registerLearnerPlugin(pi, sdk) {
   });
 
   if (!sdk?.createAgentSession || !sdk?.SessionManager || !sdk?.z) return;
+  const reconcileAdvisor = (ctx) => {
+    const currentAgentDir = agentDir(pi, ctx);
+    if (readConfiguration(currentAgentDir).enabled) configureLearner(currentAgentDir);
+  };
+  reconcileAdvisor();
+  pi.on?.('session_start', (_event, ctx) => {
+    setTimeout(() => {
+      try {
+        reconcileAdvisor(ctx);
+      } catch (error) {
+        ctx?.ui?.notify?.(`Learner advisor setup failed: ${error.message}`, 'warning');
+      }
+    }, 0);
+  });
   const watcher = createWatcher(pi, sdk, getPluginSettings);
   pi.on?.('agent_end', (event, ctx) => watcher.observe(event, ctx));
   pi.on?.('session_shutdown', () => { void watcher.shutdown().catch(() => {}); });

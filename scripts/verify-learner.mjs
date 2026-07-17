@@ -39,17 +39,14 @@ try {
   assert.deepEqual(readConfiguration(agentDir), { version: 4, enabled: true });
   assert.equal(statSync(configurationPath(agentDir)).mode & 0o777, 0o600);
   assert.match(readFileSync(path.join(agentDir, 'config.yml'), 'utf8'), /advisor:\n  enabled: false/);
-  assert.match(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /# omp-learner: begin/);
-  assert.match(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /- name: learner/);
-  assert.match(readFileSync(path.join(agentDir, 'learner', 'WATCHDOG.md'), 'utf8'), /# OMP Learner advisor/);
+  assert.equal(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), verifierRoster);
 
   const legacyRoster = `${verifierRoster}\n# omp-learner: begin\n  - name: learner\n# omp-learner: end\n`;
   writeFileSync(path.join(agentDir, 'WATCHDOG.yml'), legacyRoster);
   writeFileSync(path.join(agentDir, 'learner', 'WATCHDOG.md'), '# OMP Learner watchdog\nlegacy');
   configureLearner(agentDir);
-  assert.match(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /# omp-learner: begin/);
-  assert.match(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /@.*learner\/WATCHDOG\.md/);
-  assert.match(readFileSync(path.join(agentDir, 'learner', 'WATCHDOG.md'), 'utf8'), /# OMP Learner advisor/);
+  assert.doesNotMatch(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /# omp-learner: begin/);
+  assert.ok(!existsSync(path.join(agentDir, 'learner', 'WATCHDOG.md')));
 
   const commands = new Map();
   const events = new Map();
@@ -118,14 +115,8 @@ try {
     },
   };
   registerLearnerPlugin(pi, sdk);
-  assert.equal(events.size, 3);
+  assert.equal(events.size, 2);
   assert.ok(tools.has('learner_assess_coverage'));
-  writeFileSync(path.join(agentDir, 'WATCHDOG.yml'), verifierRoster);
-  events.get('session_start')({}, { agentDir, ui: { notify: () => {} } });
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  assert.match(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /# omp-learner: begin/);
-  assert.match(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /- name: default/);
-  assert.match(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /- name: learner/);
   assert.deepEqual(commands.get('learner').getArgumentCompletions('').map((item) => item.label), ['setup', 'off', 'status']);
   await commands.get('learner').handler('status', { agentDir });
   assert.match(messages.at(-1).content, /watchdog: on/);
@@ -697,7 +688,6 @@ await searchTool.execute('parent-death', { category: 'project_knowledge', target
   disableLearner(agentDir);
   assert.equal(readConfiguration(agentDir).enabled, false);
   assert.equal(readFileSync(path.join(agentDir, 'learner', 'WATCHDOG.md'), 'utf8'), 'user-owned notes');
-  assert.doesNotMatch(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /# omp-learner: begin/);
   await commands.get('learner').handler('off', { agentDir });
   assert.match(messages.at(-1).content, /disabled/);
 } finally {

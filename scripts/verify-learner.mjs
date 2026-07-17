@@ -6,7 +6,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { configureLearner, configurationPath, disableLearner, normalizeUpstream, readConfiguration } from '../omp-plugin/learner/config.mjs';
 import { registerLearnerPlugin } from '../omp-plugin/learner.mjs';
-import { createLearnerIssueTools, resolveParentDeathLauncher } from '../omp-plugin/learner/github-issue-adapter.mjs';
+import { createLearnerCoverageTool, createLearnerIssueTools, resolveParentDeathLauncher } from '../omp-plugin/learner/github-issue-adapter.mjs';
 
 const agentDir = mkdtempSync(path.join(os.tmpdir(), 'omp-learner-check-'));
 const z = { string: () => ({ optional: () => ({}) }), enum: (values) => ({ values }), object: (shape) => ({ shape }) };
@@ -50,6 +50,7 @@ try {
 
   const commands = new Map();
   const events = new Map();
+  const tools = new Map();
   const messages = [];
   const launches = [];
   const sessions = [];
@@ -61,6 +62,7 @@ try {
   const pi = {
     pi: { getAgentDir: () => agentDir },
     registerCommand(name, command) { commands.set(name, command); },
+    registerTool(tool) { tools.set(tool.name, tool); },
     on(name, callback) { events.set(name, callback); },
     sendMessage(message) { messages.push(message); },
   };
@@ -114,6 +116,7 @@ try {
   };
   registerLearnerPlugin(pi, sdk);
   assert.equal(events.size, 2);
+  assert.ok(tools.has('learner_assess_coverage'));
   assert.deepEqual(commands.get('learner').getArgumentCompletions('').map((item) => item.label), ['setup', 'off', 'status']);
   await commands.get('learner').handler('status', { agentDir });
   assert.match(messages.at(-1).content, /watchdog: on/);
@@ -273,6 +276,46 @@ try {
   const created = await issueTool.execute('issue-1', fileParams(candidate, search.details.searchId));
   assert.equal(created.details.created, true);
   assert.match(ghCalls.at(-1)[ghCalls.at(-1).indexOf('--body') + 1], /Evidence scope:\*\* maintainer_instruction/);
+  const coverageCalls = [];
+  const coverageFiled = [];
+  const coverageTool = createLearnerCoverageTool({
+    agentDir: (ctx) => ctx.agentDir,
+    z,
+    onFiled: (url) => coverageFiled.push(url),
+    runGh: async (args, signal) => {
+      coverageCalls.push(args);
+      assert.equal(signal, coverageAbortController.signal);
+      return args[1] === 'create' ? 'https://github.com/klondikemarlen/omp-learner/issues/68\n' : '[]';
+    },
+  });
+  const manualIssue = {
+    sourceIssueUrl: 'https://github.com/acme/orders/issues/12',
+    sourceRepository: 'acme/orders',
+    sourceAuthor: 'maintainer',
+    provenance: 'Triage review of a manually filed issue.',
+    triggerEvidence: 'The completed transcript already contains the same explicit durable instruction.',
+    rationale: 'The existing watcher signal should have produced a proposal.',
+  };
+  assert.deepEqual(coverageTool.parameters.shape.outcome.values, ['current_signal_miss', 'capability_gap', 'no_action']);
+  const noAction = await coverageTool.execute('coverage-no-action', { ...manualIssue, outcome: 'no_action', confidence: 'insufficient', rationale: 'This issue is intentionally manual.' }, undefined, undefined, { agentDir });
+  assert.equal(noAction.details.classification, 'no_action');
+  assert.match(noAction.content[0].text, /No learner action/);
+  assert.equal(coverageCalls.length, 0);
+  const coverageAbortController = new AbortController();
+  const coverageBug = await coverageTool.execute('coverage-bug', { ...manualIssue, outcome: 'current_signal_miss', confidence: 'high' }, coverageAbortController.signal, undefined, { agentDir });
+  assert.equal(coverageBug.details.created, true);
+  assert.equal(coverageBug.details.classification, 'learner_bug');
+  assert.equal(coverageFiled[0], 'https://github.com/klondikemarlen/omp-learner/issues/68');
+  const coverageBody = coverageCalls.at(-1)[coverageCalls.at(-1).indexOf('--body') + 1];
+  assert.match(coverageBody, /Source issue: https:\/\/github\.com\/acme\/orders\/issues\/12/);
+  assert.match(coverageBody, /## Existing signal/);
+  const coverageFeature = await coverageTool.execute('coverage-feature', { ...manualIssue, outcome: 'capability_gap', confidence: 'high', rationale: 'The watcher cannot observe the required source evidence.' }, coverageAbortController.signal, undefined, { agentDir });
+  assert.equal(coverageFeature.details.classification, 'learner_feature');
+  assert.match(coverageFeature.content[0].text, /Learner feature \(capability gap\)/);
+  const coverageCallCount = coverageCalls.length;
+  await assert.rejects(coverageTool.execute('coverage-insufficient', { ...manualIssue, outcome: 'current_signal_miss', confidence: 'insufficient' }, coverageAbortController.signal, undefined, { agentDir }), /requires high confidence/);
+  assert.equal(coverageCalls.length, coverageCallCount);
+  await assert.rejects(coverageTool.execute('coverage-mismatched-source', { ...manualIssue, sourceRepository: 'acme/payments', outcome: 'no_action', confidence: 'insufficient' }, undefined, undefined, { agentDir }), /must match/);
   const externalToolCalls = [];
   const { searchTool: externalToolSearch } = createLearnerIssueTools({
     upstream: 'owner/updated',
@@ -374,7 +417,7 @@ try {
       return await new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
     },
   });
-  const abortedSearch = abortableSearchTool.execute('search-abort', searchParams(candidate), undefined, undefined, abortController.signal);
+  const abortedSearch = abortableSearchTool.execute('search-abort', searchParams(candidate), abortController.signal);
   abortController.abort(new Error('parent shutdown'));
   await assert.rejects(abortedSearch, /parent shutdown/);
   assert.equal(ghSignal, abortController.signal);
@@ -394,7 +437,7 @@ setInterval(() => {}, 1_000);
     process.env.LEARNER_GH_PID_FILE = fakeGhPidPath;
     const processAbortController = new AbortController();
     const { searchTool: processAbortSearchTool } = createLearnerIssueTools({ upstream: 'owner/updated', agentDir, z });
-    const processSearch = processAbortSearchTool.execute('search-process-abort', searchParams(candidate), undefined, undefined, processAbortController.signal);
+    const processSearch = processAbortSearchTool.execute('search-process-abort', searchParams(candidate), processAbortController.signal);
     for (let attempts = 0; attempts < 50 && !existsSync(fakeGhPidPath); attempts += 1) await new Promise((resolve) => setTimeout(resolve, 10));
     assert.ok(existsSync(fakeGhPidPath));
     fakeGhPid = Number(readFileSync(fakeGhPidPath, 'utf8'));

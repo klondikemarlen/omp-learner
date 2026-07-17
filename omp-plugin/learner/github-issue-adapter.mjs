@@ -25,6 +25,39 @@ export function createLearnerIssueTools(options) {
   };
 }
 
+export function createLearnerCoverageTool({ agentDir, z, onFiled, runGh = runGitHubCli }) {
+  return {
+    name: 'learner_assess_coverage',
+    label: 'Assess Learner Coverage',
+    description: 'Assess evidence from a manually filed issue and create a linked learner issue only for a high-confidence signal miss or capability gap.',
+    approval: 'write',
+    parameters: z.object({
+      sourceIssueUrl: z.string(),
+      sourceRepository: z.string(),
+      sourceAuthor: z.string(),
+      provenance: z.string(),
+      triggerEvidence: z.string(),
+      outcome: z.enum(['current_signal_miss', 'capability_gap', 'no_action']),
+      rationale: z.string(),
+      confidence: z.enum(['high', 'insufficient']),
+    }),
+    execute: async (_toolCallId, params, signal, _onUpdate, ctx) => {
+      if (!isEnabledFor(resolveCoverageAgentDir(agentDir, ctx))) throw new Error('Learner issue filing is disabled.');
+
+      const assessment = normalizeCoverageAssessment(params);
+      if (assessment.outcome === 'no_action') return coverageResult(`No learner action: ${assessment.rationale}`, assessment, false);
+
+      const fingerprint = createCoverageFingerprint(assessment);
+      const existing = JSON.parse(await runGh(['issue', 'list', '--repo', LEARNER_REPOSITORY, '--state', 'open', '--search', fingerprint, '--limit', '1', '--json', 'url'], signal));
+      if (existing.length > 0) return coverageResult(`${coverageLabel(assessment)}: existing learner coverage issue ${existing[0].url}`, assessment, false, existing[0].url);
+
+      const url = (await runGh(['issue', 'create', '--repo', LEARNER_REPOSITORY, '--title', `learner: ${assessment.classification} from ${assessment.sourceRepository}#${assessment.issueNumber}`, '--body', coverageIssueBody(assessment, fingerprint)], signal)).trim();
+      onFiled?.(url);
+      return coverageResult(`${coverageLabel(assessment)}: created learner coverage issue ${url}`, assessment, true, url);
+    },
+  };
+}
+
 function createLearnerIssueSearchTool({ upstream, agentDir, z, searchState, nextSearchId, runGh = runGitHubCli }) {
   return {
     name: 'learner_search_issues',
@@ -38,7 +71,7 @@ function createLearnerIssueSearchTool({ upstream, agentDir, z, searchState, next
       evidenceScope: z.enum(['learner_local', 'cross_project', 'organization_policy', 'maintainer_instruction']),
       provenance: z.string(),
     }),
-    execute: async (_toolCallId, params, _onUpdate, _ctx, signal) => {
+    execute: async (_toolCallId, params, signal) => {
       if (!isEnabledFor(agentDir)) throw new Error('Learner issue filing is disabled.');
 
       const candidate = normalizeSearchCandidate(params);
@@ -71,7 +104,7 @@ export function createLearnerIssueTool({ upstream, agentDir, z, onFiled, searchS
       existingIssueNumber: z.string().optional(),
       searchId: z.string(),
     }),
-    execute: async (_toolCallId, params, _onUpdate, _ctx, signal) => {
+    execute: async (_toolCallId, params, signal) => {
       if (used) throw new Error('A learner run may file at most one issue.');
       if (!isEnabledFor(agentDir)) throw new Error('Learner issue filing is disabled.');
 
@@ -134,6 +167,40 @@ function normalizeSearchCandidate(params) {
   };
 }
 
+function normalizeCoverageAssessment(params) {
+  const sourceIssueUrl = new URL(clean(params.sourceIssueUrl, 500));
+  const sourceMatch = sourceIssueUrl.protocol === 'https:' && sourceIssueUrl.hostname === 'github.com'
+    && sourceIssueUrl.pathname.match(/^\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/issues\/([1-9]\d*)$/);
+  if (!sourceMatch) throw new Error('Source issue must be an HTTPS GitHub issue URL.');
+
+  const sourceRepository = clean(params.sourceRepository, 200);
+  const repository = `${sourceMatch[1]}/${sourceMatch[2]}`;
+  if (sourceRepository.toLowerCase() !== repository.toLowerCase()) throw new Error('Source repository must match the source issue URL.');
+
+  const outcome = clean(params.outcome, 80);
+  if (!['current_signal_miss', 'capability_gap', 'no_action'].includes(outcome)) throw new Error('Learner coverage outcome is not eligible.');
+  const confidence = clean(params.confidence, 80).toLowerCase();
+  if (!['high', 'insufficient'].includes(confidence)) throw new Error('Learner coverage confidence is not eligible.');
+  if (outcome !== 'no_action' && confidence !== 'high') throw new Error('Learner coverage filing requires high confidence.');
+
+  return {
+    sourceIssueUrl: `${sourceIssueUrl.origin}${sourceIssueUrl.pathname}`,
+    sourceRepository: repository,
+    issueNumber: sourceMatch[3],
+    sourceAuthor: redactText(clean(params.sourceAuthor, 200)),
+    provenance: redactText(clean(params.provenance, 500)),
+    triggerEvidence: redactText(clean(params.triggerEvidence, 2_000)),
+    outcome,
+    classification: outcome === 'current_signal_miss' ? 'learner_bug' : outcome === 'capability_gap' ? 'learner_feature' : 'no_action',
+    rationale: redactText(clean(params.rationale, 500)),
+    confidence,
+  };
+}
+
+function resolveCoverageAgentDir(agentDir, ctx) {
+  return typeof agentDir === 'function' ? agentDir(ctx) : agentDir;
+}
+
 
 function resolveIssueRepository(target, upstream) {
   if (target === 'learner') return LEARNER_REPOSITORY;
@@ -193,6 +260,19 @@ function createFingerprint(candidate) {
   return createHash('sha256').update(`${candidate.category}\n${candidate.scope}\n${candidate.proposedRule}`).digest('hex').slice(0, 20);
 }
 
+function createCoverageFingerprint(assessment) {
+  return createHash('sha256').update(`${assessment.sourceIssueUrl}\n${assessment.classification}`).digest('hex').slice(0, 20);
+}
+
+function coverageLabel(assessment) {
+  return assessment.classification === 'learner_bug' ? 'Learner bug (current-signal miss)' : 'Learner feature (capability gap)';
+}
+
+function coverageIssueBody(assessment, fingerprint) {
+  const evidenceLabel = assessment.outcome === 'current_signal_miss' ? 'Existing signal' : 'Missing capability';
+  return `## Learner coverage assessment\n\nSource issue: ${assessment.sourceIssueUrl}\n\n- **Source repository:** ${assessment.sourceRepository}\n- **Source author:** ${assessment.sourceAuthor}\n- **Classification:** ${coverageLabel(assessment)}\n- **Confidence:** ${assessment.confidence}\n- **Provenance:** ${assessment.provenance}\n\n## ${evidenceLabel}\n\n${assessment.triggerEvidence}\n\n## Rationale\n\n${assessment.rationale}\n\n<!-- omp-learner-coverage:${fingerprint} -->`;
+}
+
 function issueBody(candidate, fingerprint) {
   const promotionNote = candidate.evidenceScope === 'learner_local' ? '\n\n> Requires human confirmation before upstream promotion.' : '';
   return `## Learner proposal\n\n${candidate.proposedRule}\n\n- **Category:** ${candidate.category}\n- **Scope:** ${candidate.scope}\n- **Evidence scope:** ${candidate.evidenceScope}\n- **Confidence:** ${candidate.confidence}\n- **Provenance:** ${candidate.provenance}\n\n## Evidence\n\n${candidate.evidence}${promotionNote}\n\n<!-- omp-learner:${fingerprint} -->`;
@@ -200,6 +280,10 @@ function issueBody(candidate, fingerprint) {
 
 function issueResult(text, url, created) {
   return { content: [{ type: 'text', text }], details: { created, url } };
+}
+
+function coverageResult(text, assessment, created, url) {
+  return { content: [{ type: 'text', text }], details: { created, url, classification: assessment.classification, sourceIssueUrl: assessment.sourceIssueUrl } };
 }
 
 function isEnabledFor(currentAgentDir) {

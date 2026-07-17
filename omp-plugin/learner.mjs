@@ -1,4 +1,4 @@
-import { createLearnerIssueTools, redactText } from './learner/github-issue-adapter.mjs';
+import { createLearnerCoverageTool, createLearnerIssueTools, redactText } from './learner/github-issue-adapter.mjs';
 import { configurationPath, configureLearner, disableLearner, normalizeUpstream, readConfiguration, resolveAgentDir } from './learner/config.mjs';
 
 const COMMANDS = ['setup', 'off', 'status'];
@@ -10,6 +10,8 @@ const MAX_AUDIT_CHARS = 2_000;
 export function registerLearnerPlugin(pi, sdk) {
   const getPluginSettings = sdk?.getPluginSettings || (async () => ({}));
   const setKnowledgeBaseUrl = sdk?.setKnowledgeBaseUrl || (async () => { throw new Error('OMP plugin settings are unavailable.'); });
+  const z = sdk?.z || pi.zod;
+  if (z) pi.registerTool?.(createLearnerCoverageTool({ agentDir: (ctx) => agentDir(pi, ctx), z }));
   pi.registerCommand('learner', {
     description: 'Configure the persistent learner watchdog.',
     getArgumentCompletions: completeCommand,

@@ -44,6 +44,12 @@ Existing stored `/learner setup <url>` targets from before this setting are not 
 
 It does not modify OMP's advisor roster or global configuration. It takes effect for the next completed primary-agent turn; no restart or `modelRoles.advisor` configuration is required.
 
+## Issue-triage coverage
+
+When triaging a non-learner-authored issue, call `learner_assess_coverage` with its HTTPS GitHub issue URL, repository, author, provenance, concrete trigger evidence, rationale, confidence, and outcome. A high-confidence `current_signal_miss` creates a linked Learner bug; `capability_gap` creates a linked Learner feature. `no_action` records the decision in the tool result and files nothing. The tool validates that the supplied repository matches the source issue and always files only against `klondikemarlen/omp-learner`.
+
+Do not classify an issue solely because it was manually authored. Use `no_action` for one-off, intentionally manual, judgment-only, or insufficiently evidenced issues.
+
 ## Release and install verification
 
 After a release is merged to `main` and reachable on GitHub:

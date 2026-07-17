@@ -3,6 +3,7 @@ import { configurationPath, configureLearner, disableLearner, normalizeUpstream,
 
 const COMMANDS = ['setup', 'off', 'status'];
 const PLUGIN_NAME = 'omp-learner';
+const LEARNER_REPOSITORY = 'klondikemarlen/omp-learner';
 const ACTIVE_TOOLS = ['read', 'grep', 'glob', 'learner_search_issues', 'learner_file_issue'];
 const MAX_TRANSCRIPT_CHARS = 16_000;
 const MAX_AUDIT_CHARS = 2_000;

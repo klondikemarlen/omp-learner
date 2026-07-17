@@ -1,6 +1,6 @@
 # OMP Learner
 
-OMP Learner is an independent, non-blocking watchdog for explicit durable feedback and project-domain knowledge. It turns high-confidence findings into deduplicated GitHub issues in its fixed learner repository or one configured knowledge-base repository for human review.
+OMP Learner combines an independent, non-blocking watchdog with a second advisor for explicit durable feedback and project-domain knowledge. The watchdog turns high-confidence findings into deduplicated GitHub issues in its fixed learner repository or one configured knowledge-base repository for human review.
 
 ## Install
 
@@ -10,13 +10,13 @@ omp plugin install github:klondikemarlen/omp-learner
 
 Restart OMP after installing or reinstalling so a fresh session discovers the extension.
 
-## v1 support boundary
+## Advisor and watchdog
 
-v1 is an independent watchdog with an issue-first, human-review workflow; it is not a second advisor or an interactive candidate-review UI. Its stable lifecycle commands are `/learner setup`, `/learner off`, and `/learner status`.
+When enabled, Learner installs a `learner` advisor beside OMP's `default` advisor. It uses the advisor's read-only tools and `advise` channel for concise, non-blocking recommendations; the watchdog continues to file or reuse high-confidence learner issues.
 
-After a watchdog run stores or reuses a durable learning, OMP displays one redacted, bounded `Learner audit` card in the primary transcript. Runs that infer no durable learning are silent; the card is audit output, not a second advisor turn.
+Learner preserves the verifier-owned `default` advisor. On session startup it restores only its marked `learner` entry after `omp-verifier` refreshes its generated roster, so both advisors remain available.
 
-The watchdog files learner-local guidance against `klondikemarlen/omp-learner` and eligible shared guidance against the configured knowledge-base repository. Closed targets and evidence scopes prevent arbitrary repositories and keep learner-local evidence self-scoped.
+Its stable lifecycle commands are `/learner setup`, `/learner off`, and `/learner status`.
 
 Linux x64 is the supported abrupt-parent-death guarantee: GitHub CLI subprocesses use the packaged parent-death launcher. Other platforms execute `gh` directly and retain handled-shutdown cleanup only.
 
@@ -26,7 +26,7 @@ Linux x64 is the supported abrupt-parent-death guarantee: GitHub CLI subprocesse
 /learner setup https://github.com/owner/shared-guidance
 ```
 
-The URL is required. Setup normalizes and saves it as the `omp-learner` `knowledgeBaseUrl` plugin setting, then enables the watchdog.
+The URL is required. Setup normalizes and saves it as the `omp-learner` `knowledgeBaseUrl` plugin setting, then enables the watchdog and learner advisor.
 
 Alternatively, configure the same setting directly:
 
@@ -42,7 +42,7 @@ omp plugin config set omp-learner knowledgeBaseUrl https://github.com/owner/shar
 
 Existing stored `/learner setup <url>` targets from before this setting are not migrated.
 
-It does not modify OMP's advisor roster or global configuration. It takes effect for the next completed primary-agent turn; no restart or `modelRoles.advisor` configuration is required.
+It updates only its marked `learner` entry in OMP's user-level advisor roster; verifier configuration and all other advisors remain unchanged. The advisor requires OMP's normal `advisor.enabled` setting and an `advisor` model role.
 
 ## Issue-triage coverage
 

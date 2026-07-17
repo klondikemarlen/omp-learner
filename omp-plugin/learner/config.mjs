@@ -33,31 +33,73 @@ export function normalizeUpstream(value) {
 }
 
 export function configureLearner(agentDir) {
-  removeLegacyAdvisor(agentDir);
+  const instructionsPath = path.join(agentDir, LEARNER_DIR, WATCHDOG_INSTRUCTIONS_FILE);
+  const watchdogPath = path.join(agentDir, WATCHDOG_FILE);
+  const currentWatchdog = existsSync(watchdogPath) ? readFileSync(watchdogPath, 'utf8') : '';
+  const nextWatchdog = withLearnerAdvisor(currentWatchdog, agentDir);
+
+  writeText(instructionsPath, learnerInstructions(), 0o600);
+  if (nextWatchdog !== currentWatchdog) writeText(watchdogPath, nextWatchdog, 0o600);
   writeConfiguration(agentDir, { version: CONFIG_VERSION, enabled: true });
-  return { configPath: configurationPath(agentDir) };
+  return { configPath: configurationPath(agentDir), watchdogPath };
 }
 
 export function disableLearner(agentDir) {
   writeConfiguration(agentDir, { ...readConfiguration(agentDir), enabled: false });
-  removeLegacyAdvisor(agentDir);
+  removeLearnerAdvisor(agentDir);
 }
 
-
-function writeConfiguration(agentDir, configuration) {
-  writeText(configurationPath(agentDir), `${JSON.stringify(configuration, null, 2)}\n`, 0o600);
-}
-
-function removeLegacyAdvisor(agentDir) {
+function removeLearnerAdvisor(agentDir) {
   const watchdogPath = path.join(agentDir, WATCHDOG_FILE);
   if (existsSync(watchdogPath)) {
     const currentWatchdog = readFileSync(watchdogPath, 'utf8');
-    const nextWatchdog = currentWatchdog.replace(new RegExp(`\\n?${MARKER_START}[\\s\\S]*?${MARKER_END}\\n?`, 'g'), '').replace(/\n{3,}/g, '\n\n');
-    if (nextWatchdog.trim() === 'advisors:') rmSync(watchdogPath);
+    const nextWatchdog = withoutLearnerAdvisor(currentWatchdog);
+    if (!nextWatchdog.trim()) rmSync(watchdogPath);
     else if (nextWatchdog !== currentWatchdog) writeText(watchdogPath, nextWatchdog, 0o600);
   }
   const instructionsPath = path.join(agentDir, LEARNER_DIR, WATCHDOG_INSTRUCTIONS_FILE);
-  if (existsSync(instructionsPath) && readFileSync(instructionsPath, 'utf8').startsWith('# OMP Learner watchdog\n')) rmSync(instructionsPath);
+  if (existsSync(instructionsPath) && readFileSync(instructionsPath, 'utf8').startsWith('# OMP Learner advisor\n')) rmSync(instructionsPath);
+}
+
+function withLearnerAdvisor(watchdog, agentDir) {
+  const base = withoutLearnerAdvisor(watchdog).replace(/\s*$/, '') || 'advisors:\n  - name: default';
+  const lines = base.split('\n');
+  let start = lines.findIndex((line) => /^advisors:\s*$/.test(line));
+  if (start < 0) {
+    lines.push('', 'advisors:', '  - name: default');
+    start = lines.length - 2;
+  }
+  const end = lines.findIndex((line, index) => index > start && /^\S/.test(line));
+  lines.splice(end < 0 ? lines.length : end, 0, '', ...learnerAdvisorBlock(agentDir), '');
+  return `${lines.join('\n').replace(/\s*$/, '')}\n`;
+}
+
+function withoutLearnerAdvisor(watchdog) {
+  return watchdog.replace(new RegExp(`\\n?${MARKER_START}[\\s\\S]*?${MARKER_END}\\n?`, 'g'), '').replace(/\n{3,}/g, '\n\n');
+}
+
+function learnerAdvisorBlock(agentDir) {
+  return [
+    MARKER_START,
+    '  - name: learner',
+    '    tools: [read, grep, glob]',
+    '    instructions: |',
+    `      @${path.join(agentDir, LEARNER_DIR, WATCHDOG_INSTRUCTIONS_FILE)}`,
+    MARKER_END,
+  ];
+}
+
+function learnerInstructions() {
+  return `# OMP Learner advisor
+
+You are the independent, non-blocking learner advisor. Review completed turns for explicit, durable user feedback about code style, tests, commits, workflow, tooling, or stable project knowledge. Ignore ordinary task requests, verifier evidence, PASS/FAIL/BLOCKED feedback, one-off wording, and uncertainty.
+
+When feedback is high-confidence and reusable, use advise once with a concise recommendation for human review. Do not edit files, run commands, file issues, open pull requests, or block the primary task.
+`;
+}
+
+function writeConfiguration(agentDir, configuration) {
+  writeText(configurationPath(agentDir), `${JSON.stringify(configuration, null, 2)}\n`, 0o600);
 }
 
 function writeText(filePath, content, mode) {

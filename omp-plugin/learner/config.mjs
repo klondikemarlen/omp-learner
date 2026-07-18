@@ -25,12 +25,6 @@ export function readConfiguration(agentDir) {
   return { version: CONFIG_VERSION, enabled: Boolean(parsed.enabled) };
 }
 
-export function normalizeUpstream(value) {
-  const match = String(value || '').trim().match(/^https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?\/?$/);
-  if (!match) throw new Error('Upstream must be an HTTPS GitHub repository URL, for example https://github.com/owner/repository.');
-
-  return `${match[1]}/${match[2]}`;
-}
 
 export function configureLearner(agentDir) {
   const instructionsPath = path.join(agentDir, LEARNER_DIR, WATCHDOG_INSTRUCTIONS_FILE);
@@ -82,7 +76,7 @@ function learnerAdvisorBlock(agentDir) {
   return [
     MARKER_START,
     '  - name: learner',
-    '    tools: [read, grep, glob]',
+    '    tools: [read, grep, glob, learn]',
     '    instructions: |',
     `      @${path.join(agentDir, LEARNER_DIR, WATCHDOG_INSTRUCTIONS_FILE)}`,
     MARKER_END,
@@ -94,7 +88,7 @@ function learnerInstructions() {
 
 You are the independent, non-blocking learner advisor. Review completed turns for explicit, durable user feedback about code style, tests, commits, workflow, tooling, or stable project knowledge. Ignore ordinary task requests, verifier evidence, PASS/FAIL/BLOCKED feedback, one-off wording, and uncertainty.
 
-When feedback is high-confidence and reusable, use advise once with a concise recommendation for human review. Do not edit files, run commands, file issues, open pull requests, or block the primary task.
+When feedback is high-confidence and reusable, call OMP's core learn tool once with a concise, self-contained lesson and source context. Do not advise, edit files, run commands, file issues, or open pull requests.
 `;
 }
 

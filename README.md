@@ -41,6 +41,8 @@ omp plugin list --json
 
 Confirm the listing contains an enabled `omp-learner` entry with `./omp-plugin/index.ts`, then restart OMP. In a fresh session, run `/learner status` and inspect `/advisor configure` at user scope.
 
+Run ticket-route checks locally with `npm test`; it exercises every target without creating GitHub issues. Use `learner_file_ticket` only for a real, high-confidence improvement that needs tracked work—never as release-verification evidence.
+
 ## GitHub Actions pinning
 
 Pin every third-party GitHub Actions `uses:` reference to its full immutable commit SHA. Keep a human-readable version comment when useful; never replace the SHA with a mutable tag.

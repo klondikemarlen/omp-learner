@@ -2,7 +2,9 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import os from 'node:os';
 import path from 'node:path';
 
-const CONFIG_VERSION = 4;
+const CONFIG_VERSION = 5;
+export const LEARNER_REPOSITORY = 'klondikemarlen/omp-learner';
+export const DEFAULT_KNOWLEDGE_BASE_REPOSITORY = 'klondikemarlen/omp-config';
 const LEARNER_DIR = 'learner';
 const WATCHDOG_FILE = 'WATCHDOG.yml';
 const WATCHDOG_INSTRUCTIONS_FILE = 'WATCHDOG.md';
@@ -17,16 +19,29 @@ export function configurationPath(agentDir) {
   return path.join(agentDir, LEARNER_DIR, 'config.json');
 }
 
+export function normalizeRepository(value) {
+  const candidate = String(value || '').trim().replace(/^https:\/\/github\.com\//, '').replace(/\/?\.git\/?$/, '').replace(/\/$/, '');
+  if (!candidate) return DEFAULT_KNOWLEDGE_BASE_REPOSITORY;
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(candidate)) throw new Error('Knowledge base must be a GitHub owner/repository or HTTPS repository URL.');
+  return candidate;
+}
+
 export function readConfiguration(agentDir) {
   const filePath = configurationPath(agentDir);
-  if (!existsSync(filePath)) return { version: CONFIG_VERSION, enabled: false };
+  if (!existsSync(filePath)) return { version: CONFIG_VERSION, enabled: false, knowledgeBaseRepository: DEFAULT_KNOWLEDGE_BASE_REPOSITORY };
 
   const parsed = JSON.parse(readFileSync(filePath, 'utf8'));
-  return { version: CONFIG_VERSION, enabled: Boolean(parsed.enabled) };
+  return {
+    version: CONFIG_VERSION,
+    enabled: Boolean(parsed.enabled),
+    knowledgeBaseRepository: normalizeRepository(parsed.knowledgeBaseRepository),
+  };
 }
 
 
-export function configureLearner(agentDir) {
+export function configureLearner(agentDir, { knowledgeBaseRepository } = {}) {
+  const configuration = readConfiguration(agentDir);
+  const nextConfiguration = { version: CONFIG_VERSION, enabled: true, knowledgeBaseRepository: normalizeRepository(knowledgeBaseRepository ?? configuration.knowledgeBaseRepository) };
   const instructionsPath = path.join(agentDir, LEARNER_DIR, WATCHDOG_INSTRUCTIONS_FILE);
   const watchdogPath = path.join(agentDir, WATCHDOG_FILE);
   const currentWatchdog = existsSync(watchdogPath) ? readFileSync(watchdogPath, 'utf8') : '';
@@ -34,8 +49,8 @@ export function configureLearner(agentDir) {
 
   writeText(instructionsPath, learnerInstructions(), 0o600);
   if (nextWatchdog !== currentWatchdog) writeText(watchdogPath, nextWatchdog, 0o600);
-  writeConfiguration(agentDir, { version: CONFIG_VERSION, enabled: true });
-  return { configPath: configurationPath(agentDir), watchdogPath };
+  writeConfiguration(agentDir, nextConfiguration);
+  return { configPath: configurationPath(agentDir), watchdogPath, knowledgeBaseRepository: nextConfiguration.knowledgeBaseRepository };
 }
 
 export function disableLearner(agentDir) {
@@ -76,7 +91,7 @@ function learnerAdvisorBlock(agentDir) {
   return [
     MARKER_START,
     '  - name: learner',
-    '    tools: [read, grep, glob, learn]',
+    '    tools: [read, grep, glob, learn, learner_file_ticket]',
     '    instructions: |',
     `      @${path.join(agentDir, LEARNER_DIR, WATCHDOG_INSTRUCTIONS_FILE)}`,
     MARKER_END,
@@ -88,7 +103,9 @@ function learnerInstructions() {
 
 You are the independent, non-blocking learner advisor. Review completed turns for explicit, durable user feedback about code style, tests, commits, workflow, tooling, or stable project knowledge. Ignore ordinary task requests, verifier evidence, PASS/FAIL/BLOCKED feedback, one-off wording, and uncertainty.
 
-When feedback is high-confidence and reusable, call OMP's core learn tool once with a concise, self-contained lesson and source context. Do not advise, edit files, run commands, file issues, or open pull requests.
+When feedback is high-confidence and reusable, call OMP's core learn tool once with a concise, self-contained lesson and source context. Code-style standards are durable preferences: store them with learn so future generated code follows them.
+
+File a high-confidence implementation improvement with learner_file_ticket only when it needs tracked work. Prefer knowledge_base for reusable guidance, local for a project-specific change in the active checkout, and learner for an OMP Learner capability gap. Do not advise, edit files, run commands, file pull requests, or create more than one ticket.
 `;
 }
 

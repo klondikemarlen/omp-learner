@@ -1,7 +1,7 @@
 {
   "name": "omp-learner",
-  "version": "2.0.0",
-  "description": "OMP advisor that triggers core learner capture.",
+  "version": "2.1.0",
+  "description": "OMP advisor that stores durable feedback and routes approved improvements.",
   "type": "module",
   "scripts": {
     "test": "node scripts/verify-learner.mjs"

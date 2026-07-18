@@ -1,10 +1,9 @@
 {
   "name": "omp-learner",
-  "version": "1.0.17",
-  "description": "Persistent OMP learner watchdog configuration.",
+  "version": "2.0.0",
+  "description": "OMP advisor that triggers core learner capture.",
   "type": "module",
   "scripts": {
-    "build:linux-parent-death-helper": "docker run --rm -v \"$PWD:/workspace\" -w /workspace gcc@sha256:b99b86a28812b1e6453a231a947dc43d76fe192788a12f344a9b568bf9f5d24c sh -c 'cc -O2 -static -s -o omp-plugin/learner/bin/omp-learner-pdeath-linux-x64 omp-plugin/learner/bin/omp-learner-pdeath.c'",
     "test": "node scripts/verify-learner.mjs"
   },
   "repository": {
@@ -17,14 +16,7 @@
     "scripts/"
   ],
   "omp": {
-    "extensions": ["./omp-plugin/index.ts"],
-    "settings": {
-      "knowledgeBaseUrl": {
-        "type": "string",
-        "default": "https://github.com/klondikemarlen/omp-learner",
-        "description": "Optional HTTPS GitHub repository URL that may receive shared Learner guidance."
-      }
-    }
+    "extensions": ["./omp-plugin/index.ts"]
   },
   "pi": {
     "extensions": ["./omp-plugin/index.ts"]

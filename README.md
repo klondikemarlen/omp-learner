@@ -1,6 +1,6 @@
 # OMP Learner
 
-OMP Learner combines an independent, non-blocking watchdog with a second advisor for explicit durable feedback and project-domain knowledge. The watchdog turns high-confidence findings into deduplicated GitHub issues in its fixed learner repository or one configured knowledge-base repository for human review.
+OMP Learner is a small advisor plugin that sends high-confidence, reusable feedback to OMP's native `learn` tool. OMP owns durable-memory storage and managed skills; this plugin owns only the marked `learner` advisor entry.
 
 ## Install
 
@@ -10,45 +10,23 @@ omp plugin install github:klondikemarlen/omp-learner
 
 Restart OMP after installing or reinstalling so a fresh session discovers the extension.
 
-## Advisor and watchdog
+## Advisor and core learning
 
-When enabled, Learner installs a marked `learner` advisor beside OMP's `default` advisor. It uses the advisor's read-only tools and `advise` channel for concise, non-blocking recommendations; the watchdog continues to file or reuse high-confidence learner issues.
+When enabled, Learner installs a marked `learner` advisor beside OMP's `default` advisor. It can inspect with `read`, `grep`, and `glob`, then calls the core `learn` tool once for explicit, high-confidence feedback about code style, tests, commits, workflow, tooling, or stable project knowledge.
 
-Learner and `omp-verifier` preserve each other's marked roster entries on fresh sessions, so both advisors remain available. Its stable lifecycle commands are `/learner setup`, `/learner off`, and `/learner status`.
+Ordinary requests, verifier evidence, PASS/FAIL/BLOCKED feedback, one-off wording, and uncertainty are ignored. Learner does not create GitHub issues, start a second agent session, or write project files.
 
-After a watchdog run stores or reuses a durable learning, OMP displays one redacted, bounded `Learner audit` card in the primary transcript. Runs that infer no durable learning are silent; the card is watchdog audit output, not an advisor turn.
+Learner and `omp-verifier` preserve each other's marked roster entries on fresh sessions. The advisor requires OMP's normal `advisor.enabled` setting and an `advisor` model role. Core learning additionally requires `autolearn.enabled` and a supported memory backend.
 
-Linux x64 is the supported abrupt-parent-death guarantee: GitHub CLI subprocesses use the packaged parent-death launcher. Other platforms execute `gh` directly and retain handled-shutdown cleanup only.
-
-## Setup
+## Commands
 
 ```text
-/learner setup https://github.com/owner/shared-guidance
+/learner setup
+/learner off
+/learner status
 ```
 
-The URL is required. Setup normalizes and saves it as the `omp-learner` `knowledgeBaseUrl` plugin setting, then enables the watchdog and learner advisor.
-
-Alternatively, configure the same setting directly:
-
-```bash
-omp plugin config set omp-learner knowledgeBaseUrl https://github.com/owner/shared-guidance
-```
-
-`knowledgeBaseUrl` must be an HTTPS GitHub repository URL. Without it, Learner files only against `klondikemarlen/omp-learner`. The setting is the sole external-target authorization; enabled state remains in:
-
-```text
-~/.omp/agent/learner/config.json
-```
-
-Existing stored `/learner setup <url>` targets from before this setting are not migrated.
-
-It updates only its marked `learner` entry in OMP's user-level advisor roster; verifier configuration and all other advisors remain unchanged. The advisor requires OMP's normal `advisor.enabled` setting and an `advisor` model role.
-
-## Issue-triage coverage
-
-When triaging a non-learner-authored issue, call `learner_assess_coverage` with its HTTPS GitHub issue URL, repository, author, provenance, concrete trigger evidence, rationale, confidence, and outcome. A high-confidence `current_signal_miss` creates a linked Learner bug; `capability_gap` creates a linked Learner feature. `no_action` records the decision in the tool result and files nothing. The tool validates that the supplied repository matches the source issue and always files only against `klondikemarlen/omp-learner`.
-
-Do not classify an issue solely because it was manually authored. Use `no_action` for one-off, intentionally manual, judgment-only, or insufficiently evidenced issues.
+`/learner setup` enables the advisor. `/learner off` removes only Learner's marked entry and preserves verifier configuration and user-owned Learner notes.
 
 ## Release and install verification
 
@@ -59,70 +37,8 @@ omp plugin install github:klondikemarlen/omp-learner --force
 omp plugin list --json
 ```
 
-Confirm the listing contains an enabled `omp-learner` entry with `./omp-plugin/index.ts`, then reload the plugin if OMP supports it or restart OMP. In the fresh session, run:
-
-```text
-/learner status
-```
-
-Do not claim a release is installed until that command is available from the reinstalled plugin.
+Confirm the listing contains an enabled `omp-learner` entry with `./omp-plugin/index.ts`, then restart OMP. In a fresh session, run `/learner status` and inspect `/advisor configure` at user scope.
 
 ## GitHub Actions pinning
 
-Pin every third-party GitHub Actions `uses:` reference to its full immutable commit SHA. Keep a human-readable version comment when it clarifies the pin; never replace the SHA with a mutable tag.
-
-## Runtime and security boundary
-
-After a completed primary-agent turn, the plugin starts an isolated OMP `AgentSession` using the current model. The session receives a bounded, redacted transcript and can activate only:
-
-```text
-read
-grep
-glob
-learner_search_issues
-learner_file_issue
-```
-
-`learner_search_issues` retrieves up to 1,000 open issues from the fixed, host-validated target repository, ranks them against the candidate, and returns a redacted 16,000-character review snapshot. The response states when summaries or GitHub results are truncated; semantic reuse is therefore best-effort over that bounded snapshot. The learner must review it before filing. It reuses a selected materially equivalent issue when one exists; unrelated results do not suppress a distinct proposal. `learner_file_issue` can create at most one issue per learner run and keeps a final fingerprint lookup as an exact-match/race-safe backstop. Created issues identify the proposed guidance, category, scope, high confidence, visible provenance, and redacted evidence. The learner cannot use `bash`, edit files, commit, push, open pull requests, change memory, or block the primary agent.
-
-GitHub authentication is delegated to the existing `gh` CLI login. OMP Learner never persists a GitHub token, transcript, candidate history, or external target; it retains only its enabled flag.
-
-### Issue targets
-
-Before searching, the watchdog classifies evidence as `learner_local`, `cross_project`, `organization_policy`, or `maintainer_instruction`. Evidence exclusively from OMP Learner’s repository, commits, workflows, tests, or docs is `learner_local` and must use the fixed `klondikemarlen/omp-learner` repository; reusable-sounding prose does not change that. Host-tool failures and ordinary bug or feature requests are not learner candidates. The configured knowledge-base repository is available only with cited cross-project evidence, an explicit organization policy source, or maintainer instruction. The target and evidence scope are closed tool parameters; callers cannot provide arbitrary repositories, and the reviewed search ID binds the repository reused for duplicate lookup and issue creation.
-
-### Shutdown behavior
-
-On OMP's handled session shutdown (`/exit`, `/quit`, SIGINT, SIGTERM, SIGHUP, or an uncaught exception), the learner shutdown hook returns immediately so it does not block session closure; cleanup then stops queued work, disposes its active watchdog session, and cancels an in-flight `gh` call. On Linux x64, the packaged static launcher also sets `PR_SET_PDEATHSIG` to `SIGKILL` and rechecks its parent before it executes `gh`, so the child dies if the OMP parent is abruptly killed. Other platforms use `gh` directly and retain only the handled-shutdown guarantee.
-
-The checked-in Linux x64 launcher is built from `omp-plugin/learner/bin/omp-learner-pdeath.c` with:
-
-```bash
-npm run build:linux-parent-death-helper
-```
-
-It requires Docker on Linux x64; normal plugin installation and `npm test` do not compile it. The build command uses a digest-pinned GCC image so release maintainers and CI produce the same artifact.
-
-Launcher target selection is centralized in the runtime registry. It currently contains only `linux-x64`; add an artifact and one registry entry when a new platform is explicitly supported.
-
-## Knowledge-base builder
-
-In addition to code-style, test, commit, and workflow guidance, the learner captures explicit, stable project-domain facts as `project_knowledge` proposals. The configured knowledge-base issue tracker is therefore a reviewable backlog: maintainers can turn accepted issues into the repository's documentation, rules, skills, or other durable project guidance.
-
-The learner does not treat all conversation as knowledge and does not write knowledge files automatically. It ignores routine requests, verifier evidence, PASS/FAIL/BLOCKED feedback, one-off wording changes, and uncertain claims.
-
-### Librarian integration
-
-The native bundled `librarian` task agent does **not** yet consume configured knowledge-base issues automatically. OMP exposes bundled task-agent profiles to the primary `task` tool, but it does not expose an extension API that can launch or augment a specific profile from an automatic watcher. This plugin therefore does not overwrite the user's `librarian` profile or inject knowledge-base context into unrelated agents.
-
-When OMP exposes extension-owned task spawning and profile-aware prompt/tool augmentation, the learner can become a native, Hub-visible knowledge-aware subagent. Until then, use accepted knowledge-base issues as the canonical review boundary.
-
-## Disable and verify
-
-```text
-/learner off
-```
-
-```bash
-npm test
-```
+Pin every third-party GitHub Actions `uses:` reference to its full immutable commit SHA. Keep a human-readable version comment when useful; never replace the SHA with a mutable tag.

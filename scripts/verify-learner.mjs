@@ -34,6 +34,7 @@ try {
   const instructions = readFileSync(path.join(agentDir, 'learner', 'WATCHDOG.md'), 'utf8');
   assert.match(instructions, /Code-style standards are durable preferences/);
   assert.match(instructions, /Prefer knowledge_base/);
+  assert.match(instructions, /Do not route OMP runtime, built-in tool, or other-plugin gaps here/);
 
   const calls = [];
   const ticketTool = createLearnerTicketTool({

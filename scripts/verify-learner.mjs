@@ -33,6 +33,9 @@ try {
   assert.match(configuredRoster, /tools: \[read, grep, glob, learn, learner_file_ticket\]/);
   const instructions = readFileSync(path.join(agentDir, 'learner', 'WATCHDOG.md'), 'utf8');
   assert.match(instructions, /Code-style standards are durable preferences/);
+  assert.match(instructions, /explicitly asks to learn a high-confidence, non-project-specific code-style convention/);
+  assert.match(instructions, /target knowledge_base/);
+  assert.match(instructions, /File other high-confidence implementation improvements/);
   assert.match(instructions, /Prefer knowledge_base/);
   assert.match(instructions, /Do not route OMP runtime, built-in tool, or other-plugin gaps here/);
 

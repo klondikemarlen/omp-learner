@@ -14,6 +14,7 @@ Restart OMP after installing or reinstalling so a fresh session discovers the ex
 
 When enabled, Learner installs a marked `learner` advisor beside OMP's `default` advisor. It can inspect with `read`, `grep`, and `glob`, then calls the core `learn` tool once for explicit, high-confidence feedback about code style, tests, commits, workflow, tooling, or stable project knowledge. Code-style standards are retained through OMP so later generated code can follow the user's established patterns.
 
+When a user explicitly asks Learner to retain a high-confidence, non-project-specific code-style convention, it routes the convention to the configured generic knowledge-base ticket workflow so shared skills and rules can adopt it instead of leaving it only as project-local memory.
 For a high-confidence improvement requiring tracked work, Learner can use the approved `learner_file_ticket` tool. It prefers the generic knowledge base (`klondikemarlen/omp-config` by default), routes project-specific work to the active checkout's GitHub `origin`, and routes Learner capability gaps to `klondikemarlen/omp-learner`. Tickets are deduplicated by a stable marker and redact common secrets.
 
 Ordinary requests, verifier evidence, PASS/FAIL/BLOCKED feedback, one-off wording, and uncertainty are ignored. Learner does not start a second agent session, write project files, or open pull requests.

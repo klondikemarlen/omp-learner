@@ -16,15 +16,16 @@ export function registerLearnerPlugin(pi) {
     const currentAgentDir = agentDir(pi, ctx);
     if (readConfiguration(currentAgentDir).enabled) configureLearner(currentAgentDir);
   };
-  reconcileAdvisor();
+  const safeReconcile = (ctx) => {
+    try {
+      reconcileAdvisor(ctx);
+    } catch (error) {
+      ctx?.ui?.notify?.(`Learner advisor setup failed: ${error.message}`, 'warning');
+    }
+  };
+  safeReconcile();
   pi.on?.('session_start', (_event, ctx) => {
-    const reconcile = () => {
-      try {
-        reconcileAdvisor(ctx);
-      } catch (error) {
-        ctx?.ui?.notify?.(`Learner advisor setup failed: ${error.message}`, 'warning');
-      }
-    };
+    const reconcile = () => safeReconcile(ctx);
     if (ctx?.setTimeout) ctx.setTimeout(reconcile, 0);
     else setTimeout(reconcile, 0);
   });

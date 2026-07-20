@@ -118,6 +118,29 @@ try {
   await commands.get('learner').handler('setup owner repository', { agentDir });
   assert.match(messages.at(-1).content, /Usage: \/learner setup \[owner\/repository\]/);
 
+  writeFileSync(configurationPath(agentDir), '{');
+  const malformedCommands = new Map();
+  const malformedTools = new Map();
+  const malformedEvents = new Map();
+  const malformedMessages = [];
+  assert.doesNotThrow(() => registerLearnerPlugin({
+    pi: { getAgentDir: () => agentDir },
+    zod: { z },
+    registerCommand(name, command) { malformedCommands.set(name, command); },
+    registerTool(tool) { malformedTools.set(tool.name, tool); },
+    on(name, callback) { malformedEvents.set(name, callback); },
+    sendMessage(message) { malformedMessages.push(message); },
+  }));
+  assert.ok(malformedCommands.has('learner'));
+  assert.ok(malformedTools.has('learner_file_ticket'));
+  assert.ok(malformedEvents.has('session_start'));
+  const malformedWarnings = [];
+  malformedEvents.get('session_start')({}, { agentDir, setTimeout: (callback) => callback(), ui: { notify: (...args) => malformedWarnings.push(args) } });
+  assert.match(malformedWarnings.at(-1)[0], /Learner advisor setup failed:/);
+  await malformedCommands.get('learner').handler('status', { agentDir });
+  assert.match(malformedMessages.at(-1).content, /Learner setup failed:/);
+  writeFileSync(configurationPath(agentDir), previousConfiguration);
+
   const scheduled = [];
   writeFileSync(path.join(agentDir, 'WATCHDOG.yml'), verifierRoster);
   events.get('session_start')({}, { agentDir, setTimeout: (callback) => scheduled.push(callback), ui: { notify: () => {} } });

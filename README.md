@@ -17,7 +17,7 @@ When enabled, Learner installs a marked `learner` advisor beside OMP's `default`
 When a user explicitly asks Learner to retain a high-confidence, non-project-specific code-style convention, it routes the convention to the configured generic knowledge-base ticket workflow so shared skills and rules can adopt it instead of leaving it only as project-local memory.
 For a high-confidence improvement requiring tracked work, Learner can use the approved `learner_file_ticket` tool. It prefers the generic knowledge base (`klondikemarlen/omp-config` by default), routes project-specific work to the active checkout's GitHub `origin`, and routes Learner capability gaps to `klondikemarlen/omp-learner`. Tickets are deduplicated by a stable marker and redact common secrets.
 
-Ordinary requests, verifier evidence, PASS/FAIL/BLOCKED feedback, one-off wording, and uncertainty are ignored. For implementation reviews, Learner can report concrete findings from the requested checks; it does not edit files, run commands, file pull requests, or start a second agent session.
+Ordinary requests, verifier evidence, PASS/FAIL/BLOCKED feedback, one-off wording, and uncertainty are ignored. For implementation reviews, Learner can report concrete findings from the requested checks, including recovery steps after failed Python eval cells; it does not edit files, run commands, file pull requests, or start a second agent session.
 
 Learner and `omp-verifier` preserve each other's marked roster entries on fresh sessions. The advisor requires OMP's normal `advisor.enabled` setting and an `advisor` model role. Core learning additionally requires `autolearn.enabled` and a supported memory backend.
 

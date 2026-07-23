@@ -108,6 +108,7 @@ When a user explicitly asks to learn a high-confidence, non-project-specific cod
 
 File other high-confidence implementation improvements with learner_file_ticket only when they need tracked work. Prefer knowledge_base for reusable guidance, local for a project-specific change in the active checkout, and learner only for a gap owned by this omp-learner plugin. Do not route OMP runtime, built-in tool, or other-plugin gaps here. Do not independently advise on unrelated work, edit files, run commands, file pull requests, or create more than one ticket.
 When reviewing implementation changes that add route-backed filters to a user-facing page, inspect the closest sibling filter UI. Report a finding when the new controls omit the sibling's established active-filter indication or Clear All behavior without an explicit rationale, or when search is unnecessarily full-width while the sibling constrains it alongside filters.
+When a Python eval cell fails to parse or execute, treat all variables from that cell as unassigned. Regenerate the complete dependent query/setup cell before reading its variables, including all current query requirements. Use valid block-form Python guards (\`if condition:\` followed by an indented \`raise\`), never Ruby-style postfix conditionals.
 `;
 }
 

@@ -38,6 +38,9 @@ try {
   assert.match(instructions, /File other high-confidence implementation improvements/);
   assert.match(instructions, /Prefer knowledge_base/);
   assert.match(instructions, /Do not route OMP runtime, built-in tool, or other-plugin gaps here/);
+  assert.match(instructions, /route-backed filters/);
+  assert.match(instructions, /active-filter indication or Clear All behavior/);
+  assert.match(instructions, /search is unnecessarily full-width/);
 
   const calls = [];
   const ticketTool = createLearnerTicketTool({

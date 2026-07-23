@@ -41,6 +41,10 @@ try {
   assert.match(instructions, /route-backed filters/);
   assert.match(instructions, /active-filter indication or Clear All behavior/);
   assert.match(instructions, /search is unnecessarily full-width/);
+  assert.match(instructions, /Python eval cell fails to parse or execute/);
+  assert.match(instructions, /treat all variables from that cell as unassigned/);
+  assert.match(instructions, /valid block-form Python guards/);
+  assert.match(instructions, /never Ruby-style postfix conditionals/);
 
   const calls = [];
   const ticketTool = createLearnerTicketTool({

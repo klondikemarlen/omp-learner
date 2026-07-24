@@ -17,7 +17,7 @@ advisors:
     tools: [read, grep, glob]
   # omp-verifier: advisor end
 `;
-const z = { object: (shape) => shape, enum: (values) => values, string: () => ({}) };
+const z = { object: (shape) => shape, enum: (values) => values, string: () => ({ optional() { return {}; } }) };
 
 try {
   writeFileSync(path.join(agentDir, 'WATCHDOG.yml'), verifierRoster);
@@ -35,6 +35,12 @@ try {
   assert.match(instructions, /Code-style standards are durable preferences/);
   assert.match(instructions, /explicitly asks to learn a high-confidence, non-project-specific code-style convention/);
   assert.match(instructions, /target knowledge_base/);
+  assert.match(instructions, /proposalType verifier_check/);
+  assert.match(instructions, /accepted shared or project rule/);
+  assert.match(instructions, /klondikemarlen\/marlens-skills-rules-and-tools/);
+  assert.match(instructions, /target project_check/);
+  assert.match(instructions, /klondikemarlen\/omp-verifier/);
+  assert.match(instructions, /never create executable checks/);
   assert.match(instructions, /File other high-confidence implementation improvements/);
   assert.match(instructions, /Prefer knowledge_base/);
   assert.match(instructions, /Do not route OMP runtime, built-in tool, or other-plugin gaps here/);
@@ -63,6 +69,18 @@ try {
     evidence: 'token=github_pat_abcdefghijklmnopqrstuvwx',
     confidence: 'high',
   });
+  const verifierTicket = (target, title, classification = 'deterministic') => ({
+    ...ticket(target, title),
+    proposalType: 'verifier_check',
+    candidateOwner: 'The team that owns this check.',
+    acceptedRule: 'The shared or project rule was accepted after review.',
+    classification,
+    goldCondition: 'The check proves the accepted rule without inventing new behavior.',
+    passEvidence: 'PASS: the accepted rule is satisfied.',
+    failEvidence: 'FAIL: the accepted rule is violated.',
+    blockedEvidence: 'BLOCKED: required evidence or runtime support is unavailable.',
+    nonGoals: 'Do not execute commands or create enforcement automatically.',
+  });
 
   const knowledgeBaseTicket = await ticketTool.execute('ticket-1', ticket('knowledge_base', 'Capture reusable guidance'), undefined, undefined, { cwd: '/tmp/project' });
   assert.equal(knowledgeBaseTicket.details.created, true);
@@ -81,6 +99,25 @@ try {
   calls.length = 0;
   await ticketTool.execute('ticket-3', ticket('local', 'Fix project-local behavior'), undefined, undefined, { cwd: '/tmp/project' });
   assert.ok(calls[0].includes('icefoganalytics/wrap'));
+  calls.length = 0;
+  await ticketTool.execute('ticket-3a', verifierTicket('reusable_check', 'Propose shared verifier check'), undefined, undefined, { cwd: '/tmp/project' });
+  assert.ok(calls[0].includes('klondikemarlen/marlens-skills-rules-and-tools'));
+  const verifierBody = calls[1][calls[1].indexOf('--body') + 1];
+  for (const heading of ['## Source evidence', '## Accepted shared/project rule', '## Gold condition', '## Expected PASS evidence', '## Expected FAIL evidence', '## Expected BLOCKED evidence', '## Non-goals']) {
+    assert.match(verifierBody, new RegExp(heading.slice(3)));
+  }
+  assert.match(verifierBody, /\*\*Candidate owner:\*\* The team that owns this check\./);
+  assert.match(verifierBody, /\*\*Classification:\*\* deterministic/);
+  calls.length = 0;
+  await ticketTool.execute('ticket-3b', verifierTicket('project_check', 'Propose project verifier check', 'agentic'), undefined, undefined, { cwd: '/tmp/project' });
+  assert.ok(calls[0].includes('icefoganalytics/wrap'));
+  const projectVerifierBody = calls[1][calls[1].indexOf('--body') + 1];
+  assert.match(projectVerifierBody, /\*\*Classification:\*\* agentic/);
+  calls.length = 0;
+  await ticketTool.execute('ticket-3c', verifierTicket('verifier', 'Propose verifier runtime check'), undefined, undefined, { cwd: '/tmp/project' });
+  assert.ok(calls[0].includes('klondikemarlen/omp-verifier'));
+  await assert.rejects(() => ticketTool.execute('ticket-3d', { ...verifierTicket('verifier', 'Reject unknown classification'), classification: 'unknown' }, undefined, undefined, { cwd: '/tmp/project' }), /deterministic or agentic/);
+  await assert.rejects(() => ticketTool.execute('ticket-3e', ticket('verifier', 'Reject implicit verifier proposal'), undefined, undefined, { cwd: '/tmp/project' }), /explicit verification support/);
   await assert.rejects(() => ticketTool.execute('ticket-4', { ...ticket('local', 'Reject low confidence'), confidence: 'low' }, undefined, undefined, { cwd: '/tmp/project' }), /requires high confidence/);
   const nonGitHubLocalTool = createLearnerTicketTool({ agentDir, z, runGit: async () => 'git@gitlab.com:owner/project.git\n' });
   await assert.rejects(() => nonGitHubLocalTool.execute('ticket-4', ticket('local', 'Reject non-GitHub origin'), undefined, undefined, { cwd: '/tmp/project' }), /GitHub origin/);

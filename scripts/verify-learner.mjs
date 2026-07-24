@@ -41,9 +41,12 @@ try {
   assert.match(instructions, /target project_check/);
   assert.match(instructions, /klondikemarlen\/omp-verifier/);
   assert.match(instructions, /never create executable checks/);
+  assert.match(instructions, /Ownership: use target learner only when the proposed behavior belongs to this plugin's `\/learner` command, advisor, learner_file_ticket tool, or configuration\/guidance lifecycle\./);
+  assert.match(instructions, /Do not route OMP runtime, built-in tool, browser, GraphQL, repository-boundary, or other-plugin gaps here/);
+  assert.match(instructions, /if another target is considered, confirm that target owns the behavior first/);
+  assert.match(instructions, /Currentness: high confidence in historical evidence does not prove that the current implementation still fails; if current behavior has not been checked or may already be fixed, take no ticket action\./);
   assert.match(instructions, /File other high-confidence implementation improvements/);
   assert.match(instructions, /Prefer knowledge_base/);
-  assert.match(instructions, /Do not route OMP runtime, built-in tool, or other-plugin gaps here/);
   assert.match(instructions, /route-backed filters/);
   assert.match(instructions, /active-filter indication or Clear All behavior/);
   assert.match(instructions, /search is unnecessarily full-width/);

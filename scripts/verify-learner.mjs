@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { DEFAULT_KNOWLEDGE_BASE_REPOSITORY, configurationPath, configureLearner, disableLearner, readConfiguration } from '../omp-plugin/learner/config.mjs';
 import { createLearnerTicketTool } from '../omp-plugin/learner/ticket.mjs';
-import { registerLearnerPlugin } from '../omp-plugin/learner.mjs';
+import { createToolLoopGuard, registerLearnerPlugin } from '../omp-plugin/learner.mjs';
 
 const agentDir = mkdtempSync(path.join(os.tmpdir(), 'omp-learner-check-'));
 const verifierRoster = `# omp-verifier: generated
@@ -147,10 +147,28 @@ try {
     sendMessage(message) { messages.push(message); },
   };
   registerLearnerPlugin(pi);
-  assert.equal(events.size, 1);
+  assert.equal(events.size, 3);
   assert.equal(tools.get('learner_file_ticket').approval, 'write');
   assert.equal(tools.get('learner_file_ticket').hidden, true);
   assert.deepEqual(commands.get('learner').getArgumentCompletions('').map((item) => item.label), ['setup', 'off', 'status']);
+  const repeatedEdit = { toolName: 'edit', toolCallId: 'edit-1', input: { path: 'file', oldText: 'old', newText: 'new' } };
+  assert.equal(events.get('tool_call')(repeatedEdit, { agentDir }), undefined);
+  events.get('tool_result')({ ...repeatedEdit, isError: true }, { agentDir });
+  const blockedEdit = events.get('tool_call')({ ...repeatedEdit, toolCallId: 'edit-2', input: { newText: 'new', oldText: 'old', path: 'file' } }, { agentDir });
+  assert.equal(blockedEdit.block, true);
+  assert.match(blockedEdit.reason, /Re-read the current state and retry with a fresh anchor/);
+  const successfulEdit = createToolLoopGuard();
+  successfulEdit.onToolCall(repeatedEdit);
+  successfulEdit.onToolResult({ toolCallId: repeatedEdit.toolCallId, isError: false, content: [{ type: 'text', text: 'edited file' }] });
+  assert.equal(successfulEdit.onToolCall({ ...repeatedEdit, toolCallId: 'edit-3' }), undefined);
+  const staleAnchorGuard = createToolLoopGuard();
+  staleAnchorGuard.onToolCall(repeatedEdit);
+  staleAnchorGuard.onToolResult({ toolCallId: repeatedEdit.toolCallId, isError: false, content: [{ type: 'text', text: 'stale anchor' }] });
+  assert.equal(staleAnchorGuard.onToolCall({ ...repeatedEdit, toolCallId: 'edit-4' }).block, true);
+  const readGuard = createToolLoopGuard();
+  readGuard.onToolCall({ toolName: 'read', toolCallId: 'read-1', input: { path: 'file' } });
+  readGuard.onToolResult({ toolCallId: 'read-1', isError: false, content: [{ type: 'text', text: 'no changes' }] });
+  assert.equal(readGuard.onToolCall({ toolName: 'read', toolCallId: 'read-2', input: { path: 'file' } }), undefined);
 
   await commands.get('learner').handler('status', { agentDir });
   assert.match(messages.at(-1).content, /advisor: on/);
@@ -203,6 +221,7 @@ try {
   writeFileSync(path.join(agentDir, 'learner', 'WATCHDOG.md'), 'user-owned notes');
   disableLearner(agentDir);
   assert.equal(readConfiguration(agentDir).enabled, false);
+  assert.equal(events.get('tool_call')(repeatedEdit, { agentDir }), undefined);
   assert.equal(readFileSync(path.join(agentDir, 'learner', 'WATCHDOG.md'), 'utf8'), 'user-owned notes');
   assert.doesNotMatch(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /# omp-learner: begin/);
   assert.match(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /# omp-verifier: advisor begin/);

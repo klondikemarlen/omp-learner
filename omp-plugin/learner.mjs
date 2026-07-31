@@ -2,8 +2,11 @@ import { createLearnerTicketTool } from './learner/ticket.mjs';
 import { configurationPath, configureLearner, disableLearner, readConfiguration, resolveAgentDir } from './learner/config.mjs';
 
 const COMMANDS = ['setup', 'off', 'status'];
+const NO_CHANGE_PATTERN = /\b(?:no changes?|unchanged|nothing to (?:change|do)|already up[- ]to[- ]date|did not change|stale anchor|anchor.*(?:mismatch|invalid|not found)|hash.*mismatch)\b/i;
+const STATE_CHANGING_TOOLS = new Set(['ast_edit', 'edit', 'write']);
 
 export function registerLearnerPlugin(pi) {
+  const loopGuard = createToolLoopGuard();
   const z = pi.zod?.z;
   if (z) pi.registerTool?.(createLearnerTicketTool({ agentDir: (ctx) => agentDir(pi, ctx), z }));
   pi.registerCommand('learner', {
@@ -24,7 +27,14 @@ export function registerLearnerPlugin(pi) {
     }
   };
   safeReconcile();
+  pi.on?.('tool_call', (event, ctx) => {
+    if (learnerEnabled(pi, ctx)) return loopGuard.onToolCall(event);
+  });
+  pi.on?.('tool_result', (event, ctx) => {
+    if (learnerEnabled(pi, ctx)) return loopGuard.onToolResult(event);
+  });
   pi.on?.('session_start', (_event, ctx) => {
+    loopGuard.reset();
     const reconcile = () => safeReconcile(ctx);
     if (ctx?.setTimeout) ctx.setTimeout(reconcile, 0);
     else setTimeout(reconcile, 0);
@@ -79,4 +89,76 @@ function display(pi, content) {
 
 function agentDir(pi, ctx) {
   return resolveAgentDir(process.env, ctx?.agentDir || pi.pi?.getAgentDir?.());
+}
+
+function isStateChangingTool(toolName) {
+  return STATE_CHANGING_TOOLS.has(toolName);
+}
+
+export function createToolLoopGuard() {
+  const pending = new Map();
+  const failed = new Map();
+
+  return {
+    onToolCall(event = {}) {
+      const fingerprint = canonicalizeToolCall(event);
+      if (!fingerprint) return;
+      const failedToolName = failed.get(fingerprint);
+      if (failedToolName) {
+        return {
+          block: true,
+          reason: `Repeated ${failedToolName} call blocked after no state change. Re-read the current state and retry with a fresh anchor.`,
+        };
+      }
+      pending.set(event.toolCallId, { fingerprint, toolName: event.toolName });
+    },
+    onToolResult(event = {}) {
+      const call = pending.get(event.toolCallId);
+      pending.delete(event.toolCallId);
+      if (!call) return;
+      const result = safeStringify({ content: event.content, details: event.details });
+      if (isStateChangingTool(call.toolName) && (event.isError || NO_CHANGE_PATTERN.test(result))) {
+        failed.set(call.fingerprint, call.toolName);
+      } else {
+        failed.delete(call.fingerprint);
+      }
+    },
+    reset() {
+      pending.clear();
+      failed.clear();
+    },
+  };
+}
+
+function learnerEnabled(pi, ctx) {
+  try {
+    return readConfiguration(agentDir(pi, ctx)).enabled;
+  } catch {
+    return false;
+  }
+}
+
+function canonicalizeToolCall(event) {
+  try {
+    const fingerprint = safeStringify({ toolName: event.toolName, input: sortValue(event.input) });
+    return fingerprint || null;
+  } catch {
+    return null;
+  }
+}
+
+function safeStringify(value) {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '';
+  }
+}
+
+function sortValue(value) {
+  if (Array.isArray(value)) return value.map(sortValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortValue(value[key])]));
+  }
+  return value;
 }

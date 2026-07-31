@@ -10,6 +10,8 @@ omp plugin install github:klondikemarlen/omp-learner
 
 Restart OMP after installing or reinstalling so a fresh session discovers the extension.
 
+Optional support: [Ko-fi](https://ko-fi.com/klondikemarlen).
+
 ## Advisor and core learning
 
 When enabled, Learner installs a marked `learner` advisor beside OMP's `default` advisor. It can inspect with `read`, `grep`, and `glob`, then calls the core `learn` tool once for explicit, high-confidence feedback about code style, tests, commits, workflow, tooling, or stable project knowledge. Code-style standards are retained through OMP so later generated code can follow the user's established patterns.

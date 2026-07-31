@@ -21,6 +21,8 @@ When a user explicitly requests verification support for an accepted shared or p
 
 Ordinary requests, verifier evidence, PASS/FAIL/BLOCKED feedback, one-off wording, and uncertainty are ignored. For implementation reviews, Learner can report concrete findings from the requested checks, including recovery steps after failed Python eval cells; it does not edit files, run commands, file pull requests, or start a second agent session.
 
+Repeated failed or unchanged edit calls are blocked with a recovery prompt so the agent can re-read the current state and retry with a fresh anchor.
+
 Learner and `omp-verifier` preserve each other's marked roster entries on fresh sessions. The advisor requires OMP's normal `advisor.enabled` setting and an `advisor` model role. Core learning additionally requires `autolearn.enabled` and a supported memory backend.
 
 ### Guidance lifecycle

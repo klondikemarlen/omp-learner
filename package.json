@@ -1,6 +1,6 @@
 {
   "name": "omp-learner",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "description": "OMP advisor that stores durable feedback and routes approved improvements.",
   "type": "module",
   "scripts": {

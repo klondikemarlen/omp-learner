@@ -1,8 +1,8 @@
-# OMP Learner knowledge base
+# OMP Learner Knowledge Base
 
 This directory records durable project knowledge for Learner maintainers and reviewers. The [ownership and signal model](architecture/ownership-and-signals.md) describes what Learner owns, when it learns or proposes tracked work, how proposals route, and which evidence supports those boundaries.
 
-## Authority and publication
+## Authority and Publication
 
 - Current implementation behavior is defined by [`omp-plugin/learner/config.mjs`](../omp-plugin/learner/config.mjs) and [`omp-plugin/learner/ticket.mjs`](../omp-plugin/learner/ticket.mjs).
 - The repository's [`scripts/verify-learner.mjs`](../scripts/verify-learner.mjs) documents and exercises selected behavior; passing tests are evidence only for the covered cases.

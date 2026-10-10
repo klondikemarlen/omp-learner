@@ -1,12 +1,12 @@
-# Learner ownership and signal model
+# Learner Ownership and Signal Model
 
-## Purpose and boundary
+## Purpose and Boundary
 
 OMP Learner is an advisor plugin for two distinct outcomes: retain explicit, high-confidence durable feedback with OMP's native `learn` tool, or—only when tracked work is explicitly warranted—create one reviewable GitHub issue through the approval-gated `learner_file_ticket` tool. OMP's core owns durable-memory storage and managed skills. Learner does not implement a parallel memory store, replace the native learning workflow, edit proposed changes, execute proposed checks, or create pull requests.
 
 The active agent directory owns Learner's generated configuration and marked advisor guidance. Setup and session reconciliation update Learner's marked advisor block while preserving other roster entries; disabling removes Learner's marked block and recognizable generated guidance while retaining disabled configuration and user-owned notes. See [`config.mjs`](../../omp-plugin/learner/config.mjs) and the focused preservation checks in [`verify-learner.mjs`](../../scripts/verify-learner.mjs).
 
-## Signal eligibility and outcomes
+## Signal Eligibility and Outcomes
 
 The advisor reviews completed turns for explicit, durable feedback about style, tests, commits, workflow, tooling, or stable project knowledge. Ordinary task requests, verifier PASS/FAIL/BLOCKED evidence, one-off wording, and uncertainty are not learning or ticket signals. High confidence and reusability are required; historic evidence alone is not proof that an implementation still fails.
 
@@ -17,7 +17,7 @@ Keep these outcomes separate:
 
 For a verifier-check proposal, the request must explicitly seek verification support for an accepted shared or project rule. Include the accepted rule, source evidence, candidate owner, deterministic or agentic classification, Gold condition, expected PASS/FAIL/BLOCKED evidence, and non-goals. It is a proposal only: Learner must not generate executable checks, commands, or run them. Ordinary verifier results are not feedback to be learned or ticketed.
 
-## Ownership and routing
+## Ownership and Routing
 
 The selected target must match the actual behavior owner, not the repository where a symptom appeared:
 
@@ -32,7 +32,7 @@ The selected target must match the actual behavior owner, not the repository whe
 
 When ownership is unclear, inspect available source and plugin metadata before routing; do not guess from the surface where a problem appeared. A ticket target is not proof that the destination owns the concern.
 
-## Proposal hygiene and authority
+## Proposal Hygiene and Authority
 
 Ticket fields are normalized and length-limited before filing. Current source evidence belongs in the proposal; redact sensitive data and avoid unnecessary private or unrelated context. The implementation redacts common GitHub/AWS token patterns and common labeled bearer/token/password/secret values; this is not a guarantee that every secret format is recognized, so review content before filing.
 
@@ -40,6 +40,6 @@ An open issue matching the generated fingerprint for repository, title, proposal
 
 Learner may retain a lesson or submit a proposal, but ownership remains with the destination maintainers: they decide whether to accept, refine, implement, or close it. Learner does not change the accepted rule, claim a check has been installed, or infer permission to file from a failure report alone.
 
-## Evidence and source conflicts
+## Evidence and Source Conflicts
 
 The current code is the authority for implemented behavior; tests show only the cases they execute. [`README.md`](../../README.md) summarizes the current core-learning and ticket workflow, while this document explains its ownership boundaries. Older descriptions of Learner as a standalone replacement watchdog are stale: generated guidance is agent-owned, while the runtime uses OMP's native `learn` tool. Re-check the linked implementation and tests before changing this model.

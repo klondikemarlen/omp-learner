@@ -17,6 +17,20 @@ Keep these outcomes separate:
 
 For a verifier-check proposal, the request must explicitly seek verification support for an accepted shared or project rule. Include the accepted rule, source evidence, candidate owner, deterministic or agentic classification, Gold condition, expected PASS/FAIL/BLOCKED evidence, and non-goals. It is a proposal only: Learner must not generate executable checks, commands, or run them. Ordinary verifier results are not feedback to be learned or ticketed.
 
+## Stock OMP Ticket Transport
+
+Stock OMP's named-advisor tool pool contains built-ins, not registered extension tools. Learner grants the native `eval` tool and uses its JavaScript session-tool bridge:
+
+```js
+display(await tool.learner_file_ticket({ target, title, proposal, evidence, confidence: 'high' }));
+```
+
+The ticket tool is enabled by default rather than hidden/inactive, so stock dispatch can resolve it. The bridge invokes the same registered tool and native approval wrapper; it does not import the implementation or duplicate the action pipeline. The advisor still selects the eligible action and executes it. The returned `text`, `details.created`, `details.url`, and `hasError` when present are observed operation evidence; a thrown error or error result is not success.
+
+The generated roster uses `tools: [read, grep, glob, learn, eval]`. User-owned tool/model/cadence overrides remain authoritative and are not rewritten by the plugin. An override without `eval`, an unavailable JavaScript runtime, or a disabled session ticket tool blocks an eligible ticket operation. Existing user approval/denial policies remain authoritative.
+
+**Capability boundary:** Native `eval` is execution-capable and can dispatch enabled primary-session tools; the Learner-specific ticket-only restriction is prompt policy, not a hard sandbox. The guidance forbids implementation imports, helper definitions, dependency installation, direct file/network access, commands, verifier execution, and other eval-bridged tools. No model/provider change, unconditional runner, or custom agent runtime is introduced.
+
 ## Operation Results and Silence
 
 The generated advisor prompt keeps the model as the eligible-signal selector and executor. It uses only the existing core `learn` and approval-gated `learner_file_ticket` action paths. After an eligible action, it may deliver one non-blocking `advise` note (`severity: nit`) containing a JSON array of results, with no accompanying review, recommendations, recovery instructions, strategy, progress, or no-action notices.

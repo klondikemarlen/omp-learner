@@ -17,7 +17,7 @@ Optional support: [Ko-fi](https://ko-fi.com/klondikemarlen).
 When enabled, Learner installs a marked `learner` advisor beside OMP's `default` advisor. It can inspect with `read`, `grep`, and `glob`, then calls the core `learn` tool once for explicit, high-confidence feedback about code style, tests, commits, workflow, tooling, or stable project knowledge. Code-style standards are retained through OMP so later generated code can follow the user's established patterns.
 
 When a user explicitly asks Learner to retain a high-confidence, non-project-specific code-style convention, it routes the convention to the configured generic knowledge-base ticket workflow so shared skills and rules can adopt it instead of leaving it only as project-local memory.
-For a high-confidence improvement requiring tracked work, Learner can use the approved `learner_file_ticket` tool. It prefers the generic knowledge base (`klondikemarlen/omp-config` by default), routes project-specific work to the active checkout's GitHub `origin`, and routes Learner capability gaps to `klondikemarlen/omp-learner`. Tickets are deduplicated by a stable marker and redact common secrets.
+For a high-confidence improvement explicitly authorized for tracked work, Learner uses stock OMP's `eval` JavaScript bridge to call the approved, registered `learner_file_ticket` tool. It prefers the generic knowledge base (`klondikemarlen/omp-config` by default), routes project-specific work to the active checkout's GitHub `origin`, and routes Learner capability gaps to `klondikemarlen/omp-learner`. Tickets are deduplicated by a stable marker and redact common secrets.
 When tool ownership is unclear, inspect the user's own plugin repositories and installed/plugin source metadata before filing an OMP runtime issue; for this user, check `klondikemarlen/marlens-skills-rules-and-tools`, then enumerate or search the user's other GitHub repositories before assigning ownership elsewhere.
 When a user explicitly requests verification support for an accepted shared or project rule, Learner can file a reviewable verifier-check proposal—not an executable check—with source evidence, candidate owner, deterministic or agentic classification, Gold condition, expected PASS/FAIL/BLOCKED evidence, and non-goals. Reusable checks route to `klondikemarlen/marlens-skills-rules-and-tools`, project-only checks to the active project, and verifier runtime or discovery gaps to `klondikemarlen/omp-verifier`.
 
@@ -27,6 +27,14 @@ Successful learning/ticket actions may produce one concise, evidence-backed oper
 Repeated failed or unchanged edit calls are blocked with a recovery prompt so the agent can re-read the current state and retry with a fresh anchor.
 
 Learner and `omp-verifier` preserve each other's marked roster entries on fresh sessions. The advisor requires OMP's normal `advisor.enabled` setting and an `advisor` model role. Core learning additionally requires `autolearn.enabled` and a supported memory backend.
+
+### Stock OMP Tool Grants
+
+The generated Learner roster grants `read`, `grep`, `glob`, `learn`, and `eval`. Stock OMP does not directly expose extension tools to named advisors; Learner uses `display(await tool.learner_file_ticket({...}))` through the built-in JavaScript runtime instead. The existing ticket tool is enabled by default in the session and retains its native write-approval gate, validation, routing, deduplication, and redaction. No OMP patch, new action pipeline, or replacement agent runtime is required.
+
+Explicit user advisor overrides are preserved. An override must include `eval` to support ticket dispatch; disabled/unavailable JavaScript or a disabled ticket tool is an honest blocker for an otherwise eligible proposal. Do not bypass denial or silently change approval policies.
+
+`eval` is execution-capable and can reach enabled primary-session tools. Restricting Learner to the one ticket-tool call is prompt policy, not a hard ticket-only sandbox. The generated guidance forbids direct implementation imports, helper definitions, package installation, file/network access, shell commands, verifier checks, and unrelated tool calls through eval.
 
 ### Guidance lifecycle
 

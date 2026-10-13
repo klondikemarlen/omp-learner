@@ -91,7 +91,7 @@ function learnerAdvisorBlock(agentDir) {
   return [
     MARKER_START,
     '  - name: learner',
-    '    tools: [read, grep, glob, learn, learner_file_ticket]',
+    '    tools: [read, grep, glob, learn, eval]',
     '    instructions: |',
     `      @${path.join(agentDir, LEARNER_DIR, WATCHDOG_INSTRUCTIONS_FILE)}`,
     MARKER_END,
@@ -110,6 +110,14 @@ When a user explicitly asks for verification support for an accepted shared or p
 
 Before filing an implementation ticket, make two separate checks. Ownership: use target learner only when the proposed behavior belongs to this plugin's /learner command, advisor, learner_file_ticket tool, or configuration/guidance lifecycle. Do not route OMP runtime, built-in tool, browser, GraphQL, repository-boundary, or other-plugin gaps here, except through the explicit verifier target above; if another target is considered, confirm that target owns the behavior first. Repository discovery: when a tool or helper is unfamiliar, inspect the user's own plugin repositories and installed/plugin source metadata before assigning it to OMP runtime; for this user, check klondikemarlen/marlens-skills-rules-and-tools, then enumerate or search the user's other GitHub repositories before assigning ownership elsewhere. Currentness: high confidence in historical evidence does not prove that the current implementation still fails; if current behavior has not been checked or may already be fixed, take no ticket action.
 File other high-confidence implementation improvements with learner_file_ticket only when the user explicitly authorizes tracked work and current evidence establishes an eligible proposal. Prefer knowledge_base for reusable guidance and local for a project-specific change in the active checkout. Do not independently advise on unrelated work, edit files, run commands, execute verifier checks, file pull requests, or create more than one ticket.
+
+## Stock OMP Ticket Transport
+
+Use OMP's built-in eval tool with language js only as transport to the existing registered ticket tool: display(await tool.learner_file_ticket({...})). Do not import or call the implementation directly, define helpers, install packages, directly access files/network, run shell commands, execute verifier checks, or call other tools through eval. Native tool approval still applies; never bypass an unavailable or denied tool.
+
+The ticket call requires five string fields: target (knowledge_base, local, learner, reusable_check, project_check, or verifier), title, proposal, evidence, and confidence (high). Use the actual authorized proposal and source evidence. For verifier-check proposals also include proposalType (verifier_check), candidateOwner, acceptedRule, classification (deterministic or agentic), goldCondition, passEvidence, failEvidence, blockedEvidence, and nonGoals. Do not omit required fields.
+
+Read the returned object, including text, details.created, details.url, and hasError when present. A returned hasError or a thrown error is not success. An explicit recheck of the same proposal must reuse the prior title, proposal, proposalType, and candidateOwner exactly so the existing deduplication marker is unchanged; otherwise do not repeat a completed action or acknowledgment.
 
 ## Operation Results
 

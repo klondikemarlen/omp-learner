@@ -16,8 +16,7 @@ export function createLearnerTicketTool({ agentDir, z, runGh = runGitHubCli, run
   return {
     name: 'learner_file_ticket',
     label: 'File Learner Improvement Ticket',
-    description: 'File one deduplicated, high-confidence improvement ticket to the preferred knowledge base, active project, Learner, or a reviewable verifier-check proposal.',
-    hidden: true,
+    description: 'File one explicitly authorized, deduplicated, high-confidence improvement proposal to the preferred knowledge base, active project, Learner, or a reviewable verifier-check proposal. Never implement or activate the proposal.',
     approval: 'write',
     parameters: z.object({
       target: z.enum(TARGETS),

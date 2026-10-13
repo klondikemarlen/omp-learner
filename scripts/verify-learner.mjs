@@ -150,7 +150,6 @@ try {
   registerLearnerPlugin(pi);
   assert.equal(events.size, 3);
   assert.equal(tools.get('learner_file_ticket').approval, 'write');
-  assert.equal(tools.get('learner_file_ticket').hidden, true);
   assert.deepEqual(commands.get('learner').getArgumentCompletions('').map((item) => item.label), ['setup', 'off', 'status']);
   const repeatedEdit = { toolName: 'edit', toolCallId: 'edit-1', input: { path: 'file', oldText: 'old', newText: 'new' } };
   assert.equal(events.get('tool_call')(repeatedEdit, { agentDir }), undefined);

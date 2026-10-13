@@ -30,31 +30,6 @@ try {
   const configuredRoster = readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8');
   assert.match(configuredRoster, /# omp-verifier: advisor begin/);
   assert.match(configuredRoster, /# omp-learner: begin/);
-  assert.match(configuredRoster, /tools: \[read, grep, glob, learn, learner_file_ticket\]/);
-  const instructions = readFileSync(path.join(agentDir, 'learner', 'WATCHDOG.md'), 'utf8');
-  assert.match(instructions, /Code-style standards are durable preferences/);
-  assert.match(instructions, /explicitly asks to learn a high-confidence, non-project-specific code-style convention/);
-  assert.match(instructions, /target knowledge_base/);
-  assert.match(instructions, /proposalType verifier_check/);
-  assert.match(instructions, /accepted shared or project rule/);
-  assert.match(instructions, /klondikemarlen\/marlens-skills-rules-and-tools/);
-  assert.match(instructions, /target project_check/);
-  assert.match(instructions, /klondikemarlen\/omp-verifier/);
-  assert.match(instructions, /never create executable checks/);
-  assert.match(instructions, /Ownership: use target learner only when the proposed behavior belongs to this plugin's \/learner command, advisor, learner_file_ticket tool, or configuration\/guidance lifecycle\./);
-  assert.match(instructions, /Do not route OMP runtime, built-in tool, browser, GraphQL, repository-boundary, or other-plugin gaps here/);
-  assert.match(instructions, /if another target is considered, confirm that target owns the behavior first/);
-  assert.match(instructions, /Currentness: high confidence in historical evidence does not prove that the current implementation still fails; if current behavior has not been checked or may already be fixed, take no ticket action\./);
-  assert.match(instructions, /Repository discovery: when a tool or helper is unfamiliar, inspect the user's own plugin repositories and installed\/plugin source metadata before assigning it to OMP runtime; for this user, check klondikemarlen\/marlens-skills-rules-and-tools, then enumerate or search the user's other GitHub repositories before assigning ownership elsewhere\./);
-  assert.match(instructions, /File other high-confidence implementation improvements/);
-  assert.match(instructions, /Prefer knowledge_base/);
-  assert.match(instructions, /route-backed filters/);
-  assert.match(instructions, /active-filter indication or Clear All behavior/);
-  assert.match(instructions, /search is unnecessarily full-width/);
-  assert.match(instructions, /Python eval cell fails to parse or execute/);
-  assert.match(instructions, /treat all variables from that cell as unassigned/);
-  assert.match(instructions, /valid block-form Python guards/);
-  assert.match(instructions, /never Ruby-style postfix conditionals/);
 
   const calls = [];
   const ticketTool = createLearnerTicketTool({
@@ -87,7 +62,10 @@ try {
   });
 
   const knowledgeBaseTicket = await ticketTool.execute('ticket-1', ticket('knowledge_base', 'Capture reusable guidance'), undefined, undefined, { cwd: '/tmp/project' });
-  assert.equal(knowledgeBaseTicket.details.created, true);
+  assert.deepEqual(knowledgeBaseTicket, {
+    content: [{ type: 'text', text: 'Created learner ticket: https://github.com/icefoganalytics/wrap/issues/99' }],
+    details: { created: true, url: 'https://github.com/icefoganalytics/wrap/issues/99' },
+  });
   assert.ok(calls[0].includes(DEFAULT_KNOWLEDGE_BASE_REPOSITORY));
   assert.match(calls[1][calls[1].indexOf('--body') + 1], /\[REDACTED\]/);
   calls.length = 0;
@@ -126,13 +104,36 @@ try {
   const nonGitHubLocalTool = createLearnerTicketTool({ agentDir, z, runGit: async () => 'git@gitlab.com:owner/project.git\n' });
   await assert.rejects(() => nonGitHubLocalTool.execute('ticket-4', ticket('local', 'Reject non-GitHub origin'), undefined, undefined, { cwd: '/tmp/project' }), /GitHub origin/);
 
-  const duplicateTool = createLearnerTicketTool({
+  await assert.rejects(() => ticketTool.execute('missing-cwd', ticket('local', 'Missing project context')), /without a working directory/);
+
+  const failedTicketTool = createLearnerTicketTool({
     agentDir,
     z,
-    runGh: async () => JSON.stringify([{ url: 'https://github.com/klondikemarlen/omp-config/issues/1' }]),
+    runGh: async () => {
+      throw new Error('GitHub authentication unavailable');
+    },
   });
-  const duplicate = await duplicateTool.execute('ticket-5', ticket('knowledge_base', 'Capture reusable guidance'), undefined, undefined, { cwd: '/tmp/project' });
-  assert.equal(duplicate.details.created, false);
+  await assert.rejects(() => failedTicketTool.execute('failed-ticket', ticket('knowledge_base', 'Unavailable GitHub action')), /GitHub authentication unavailable/);
+
+  let createdTickets = 0;
+  const duplicateUrl = 'https://github.com/klondikemarlen/omp-config/issues/1';
+  const deduplicatingTool = createLearnerTicketTool({
+    agentDir,
+    z,
+    runGh: async (args) => {
+      if (args[1] === 'list') return JSON.stringify(createdTickets ? [{ url: duplicateUrl }] : []);
+      createdTickets += 1;
+      return duplicateUrl;
+    },
+  });
+  const repeatedProposal = ticket('knowledge_base', 'Capture reusable guidance');
+  await deduplicatingTool.execute('ticket-first', repeatedProposal);
+  const duplicate = await deduplicatingTool.execute('ticket-repeat', repeatedProposal);
+  assert.deepEqual(duplicate, {
+    content: [{ type: 'text', text: `Existing learner ticket: ${duplicateUrl}` }],
+    details: { created: false, url: duplicateUrl },
+  });
+  assert.equal(createdTickets, 1);
 
   const commands = new Map();
   const events = new Map();

@@ -12,10 +12,31 @@ The advisor reviews completed turns for explicit, durable feedback about style, 
 
 Keep these outcomes separate:
 
-1. **Remembered lesson:** For high-confidence reusable feedback, Learner calls OMP's core `learn` tool once with a concise lesson and source context. This stores knowledge through OMP; it does not itself justify a GitHub issue.
+1. **Acknowledged lesson:** For high-confidence reusable feedback, Learner calls OMP's core `learn` tool once with a concise lesson and source context. Report the actual acknowledgment, not stronger backend persistence than the tool proves. This does not itself justify a GitHub issue or repeating an action already completed by the primary agent.
 2. **Reviewable tracked proposal:** When explicit user intent and current source evidence establish work needing owner review, Learner may file one high-confidence issue. Ticket filing is a write-approval tool, deduplicates by a stable fingerprint, and redacts some common secret forms. It does not implement the proposal.
 
 For a verifier-check proposal, the request must explicitly seek verification support for an accepted shared or project rule. Include the accepted rule, source evidence, candidate owner, deterministic or agentic classification, Gold condition, expected PASS/FAIL/BLOCKED evidence, and non-goals. It is a proposal only: Learner must not generate executable checks, commands, or run them. Ordinary verifier results are not feedback to be learned or ticketed.
+
+## Operation Results and Silence
+
+The generated advisor prompt keeps the model as the eligible-signal selector and executor. It uses only the existing core `learn` and approval-gated `learner_file_ticket` action paths. After an eligible action, it may deliver one non-blocking `advise` note (`severity: nit`) containing a JSON array of results, with no accompanying review, recommendations, recovery instructions, strategy, progress, or no-action notices.
+
+Each result contains:
+
+| Field | Contract |
+| --- | --- |
+| `operation` | `learn` or `learner_file_ticket`. |
+| `outcome` | `acknowledged` for core learning; `created` or `reused` for ticket results; `blocked` for an observed missing prerequisite or denied approval; `failed` for an attempted tool error. |
+| `subject` | Concise lesson or proposal identity. |
+| `evidence` | Actual core acknowledgment, exact returned ticket URL, or bounded observed error. |
+
+The ticket tool's existing `details: { created, url }` is authoritative: `created: true` means created, `false` means reused. The corresponding explicit tool-result text carries the same outcome/URL if structured details are not visible to the advisor. No invented issue number, implementation claim, or automatic policy activation follows from filing a proposal.
+
+Learning acknowledgment is not an independent confirmation that backend consolidation or durable storage completed. Do not upgrade it to a stronger persistence claim. If a lesson and an authorized ticket are both attempted, report their observed outcomes separately; success or failure of one does not establish the other's outcome.
+
+No eligible signal means no learning/ticket action and no `advise` call. Ordinary requests, uncertainty, read-only/remote-only activity alone, unrelated UI/filter review, Python eval failures, and verifier PASS/FAIL/BLOCKED results remain silent. An unrelated failure or ineligible signal must not become a Learner blocker. Eligible failures use non-blocking `nit` severity, do not stop primary work, and do not bypass denied approval.
+
+**Enforcement boundary:** Result-only delivery, signal selection, once-only action/reporting, and silence are generated prompt policy—not a new programmatic admission filter or a guarantee about every future model decision. OMP owns native advisor scheduling, tool availability, approval, and delivery; its UI may still label these messages **Advisor**. The plugin does not change model/provider routes, user advisor overrides, independent advisors, native memory ownership, or the existing ticket routing, deduplication, and redaction behavior.
 
 ## Ownership and Routing
 

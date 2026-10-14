@@ -56,7 +56,7 @@ async function handleCommand(pi, args, ctx) {
       if (tokens.length > 2) return display(pi, 'Usage: /learner setup [owner/repository]');
       const configuration = configureLearner(currentAgentDir, { knowledgeBaseRepository: tokens[1] });
       const setupMessage = [
-        'Learner advisor enabled. High-confidence actionable corrections are filed as deduplicated, evidence-backed issues before optional learning.',
+        'Learner advisor enabled. Reusable personal preferences become shared-guidance issues; genuinely project-specific corrections stay with their project.',
         'Destinations are limited to the active GitHub origin or klondikemarlen-owned repositories; related targets require evidence, and upstream or external issues are blocked.',
         `Configured shared-guidance target: ${configuration.knowledgeBaseRepository}.`,
       ].join(' ');
@@ -82,9 +82,10 @@ function statusText(currentAgentDir) {
     'Learner status:',
     `advisor: ${configuration.enabled ? 'on' : 'off'}`,
     'core learning: uses OMP\'s learn tool when autolearn.enabled and a supported memory backend are configured',
-    'feedback handling: actionable high-confidence corrections are filed as deduplicated evidence-backed issues before optional learning',
+    'feedback handling: reusable personal preferences become shared-guidance issues; project-specific corrections stay local; memory is supplementary',
     'ticket boundary: active GitHub origin or klondikemarlen-owned repositories; related targets require evidence; no upstream or external issues',
     `shared guidance target: ${configuration.knowledgeBaseRepository}`,
+    'shared capture: an issue records a proposal; active cross-project guidance requires review, release, and installation',
     `configuration: ${configurationPath(currentAgentDir)}`,
   ].join('\n');
 }

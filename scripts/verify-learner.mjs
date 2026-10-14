@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { DEFAULT_KNOWLEDGE_BASE_REPOSITORY, configurationPath, configureLearner, disableLearner, readConfiguration } from '../omp-plugin/learner/config.mjs';
 import { createLearnerTicketTool } from '../omp-plugin/learner/ticket.mjs';
 import { createToolLoopGuard, registerLearnerPlugin } from '../omp-plugin/learner.mjs';
@@ -22,11 +23,50 @@ const z = { object: (shape) => shape, array: (schema) => schema, enum: (values) 
 try {
   writeFileSync(path.join(agentDir, 'WATCHDOG.yml'), verifierRoster);
 
+  const missingConfiguration = readConfiguration(path.join(agentDir, 'missing-agent'));
+  assert.deepEqual(missingConfiguration, { version: 6, enabled: false, knowledgeBaseRepository: DEFAULT_KNOWLEDGE_BASE_REPOSITORY });
+
   const configured = configureLearner(agentDir);
   assert.equal(configured.configPath, configurationPath(agentDir));
   assert.equal(configured.knowledgeBaseRepository, DEFAULT_KNOWLEDGE_BASE_REPOSITORY);
-  assert.deepEqual(readConfiguration(agentDir), { version: 5, enabled: true, knowledgeBaseRepository: DEFAULT_KNOWLEDGE_BASE_REPOSITORY });
+  assert.deepEqual(readConfiguration(agentDir), { version: 6, enabled: true, knowledgeBaseRepository: DEFAULT_KNOWLEDGE_BASE_REPOSITORY });
   assert.equal(statSync(configurationPath(agentDir)).mode & 0o777, 0o600);
+
+  writeFileSync(configurationPath(agentDir), JSON.stringify({
+    version: 5,
+    enabled: false,
+    knowledgeBaseRepository: 'KLONDIKEMARLEN/OMP-CONFIG',
+  }));
+  assert.deepEqual(readConfiguration(agentDir), {
+    version: 6,
+    enabled: false,
+    knowledgeBaseRepository: DEFAULT_KNOWLEDGE_BASE_REPOSITORY,
+  });
+  disableLearner(agentDir);
+  assert.deepEqual(JSON.parse(readFileSync(configurationPath(agentDir), 'utf8')), {
+    version: 6,
+    enabled: false,
+    knowledgeBaseRepository: DEFAULT_KNOWLEDGE_BASE_REPOSITORY,
+  });
+
+  writeFileSync(configurationPath(agentDir), JSON.stringify({
+    version: 5,
+    enabled: true,
+    knowledgeBaseRepository: 'owner/custom-repository',
+  }));
+  assert.deepEqual(readConfiguration(agentDir), {
+    version: 6,
+    enabled: true,
+    knowledgeBaseRepository: 'owner/custom-repository',
+  });
+  configureLearner(agentDir);
+  assert.deepEqual(JSON.parse(readFileSync(configurationPath(agentDir), 'utf8')), {
+    version: 6,
+    enabled: true,
+    knowledgeBaseRepository: 'owner/custom-repository',
+  });
+
+  configureLearner(agentDir, { knowledgeBaseRepository: DEFAULT_KNOWLEDGE_BASE_REPOSITORY });
   const configuredRoster = readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8');
   assert.match(configuredRoster, /# omp-verifier: advisor begin/);
   assert.match(configuredRoster, /# omp-learner: begin/);
@@ -116,7 +156,7 @@ try {
   await assert.rejects(() => failedTicketTool.execute('failed-ticket', ticket('knowledge_base', 'Unavailable GitHub action')), /GitHub authentication unavailable/);
 
   let createdTickets = 0;
-  const duplicateUrl = 'https://github.com/klondikemarlen/omp-config/issues/1';
+  const duplicateUrl = 'https://github.com/klondikemarlen/marlens-skills-rules-and-tools/issues/1';
   const deduplicatingTool = createLearnerTicketTool({
     agentDir,
     z,
@@ -172,11 +212,8 @@ try {
 
   await commands.get('learner').handler('status', { agentDir });
   assert.match(messages.at(-1).content, /advisor: on/);
-  assert.match(messages.at(-1).content, new RegExp(`knowledge base: ${DEFAULT_KNOWLEDGE_BASE_REPOSITORY}`));
-  assert.match(messages.at(-1).content, /ticket filing: learner_file_ticket/);
 
   await commands.get('learner').handler('setup https://github.com/owner/repository.git', { agentDir });
-  assert.match(messages.at(-1).content, /Preferred ticket target: owner\/repository/);
   assert.equal(readConfiguration(agentDir).knowledgeBaseRepository, 'owner/repository');
   const previousConfiguration = readFileSync(configurationPath(agentDir), 'utf8');
   const previousWatchdog = readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8');

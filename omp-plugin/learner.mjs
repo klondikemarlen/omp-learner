@@ -55,7 +55,12 @@ async function handleCommand(pi, args, ctx) {
     if (command === 'setup') {
       if (tokens.length > 2) return display(pi, 'Usage: /learner setup [owner/repository]');
       const configuration = configureLearner(currentAgentDir, { knowledgeBaseRepository: tokens[1] });
-      return display(pi, `Learner advisor enabled. High-confidence feedback is stored with OMP's core learn tool. Preferred ticket target: ${configuration.knowledgeBaseRepository}.`);
+      const setupMessage = [
+        'Learner advisor enabled. High-confidence actionable corrections are filed as deduplicated, evidence-backed issues before optional learning.',
+        'Destinations are limited to the active GitHub origin or klondikemarlen-owned repositories; related targets require evidence, and upstream or external issues are blocked.',
+        `Configured shared-guidance target: ${configuration.knowledgeBaseRepository}.`,
+      ].join(' ');
+      return display(pi, setupMessage);
     }
 
     if (command === 'off') {
@@ -77,8 +82,9 @@ function statusText(currentAgentDir) {
     'Learner status:',
     `advisor: ${configuration.enabled ? 'on' : 'off'}`,
     'core learning: uses OMP\'s learn tool when autolearn.enabled and a supported memory backend are configured',
-    `knowledge base: ${configuration.knowledgeBaseRepository} (preferred ticket target)`,
-    'ticket filing: learner_file_ticket files approved high-confidence improvements',
+    'feedback handling: actionable high-confidence corrections are filed as deduplicated evidence-backed issues before optional learning',
+    'ticket boundary: active GitHub origin or klondikemarlen-owned repositories; related targets require evidence; no upstream or external issues',
+    `shared guidance target: ${configuration.knowledgeBaseRepository}`,
     `configuration: ${configurationPath(currentAgentDir)}`,
   ].join('\n');
 }

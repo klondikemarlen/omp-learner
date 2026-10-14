@@ -17,7 +17,7 @@ advisors:
     tools: [read, grep, glob]
   # omp-verifier: advisor end
 `;
-const z = { object: (shape) => shape, enum: (values) => values, string: () => ({ optional() { return {}; } }) };
+const z = { object: (shape) => shape, array: (schema) => schema, enum: (values) => values, string: () => ({ optional() { return {}; } }) };
 
 try {
   writeFileSync(path.join(agentDir, 'WATCHDOG.yml'), verifierRoster);

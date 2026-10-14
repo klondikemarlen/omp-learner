@@ -1,6 +1,6 @@
 # OMP Learner
 
-OMP Learner is a small advisor plugin that stores high-confidence, reusable feedback through OMP's native `learn` tool and routes approved improvement tickets. OMP owns durable-memory storage and managed skills; this plugin owns only the marked `learner` advisor entry and one ticket tool.
+OMP Learner is a small advisor plugin that stores high-confidence, reusable feedback through OMP's native `learn` tool and routes approved improvement tickets. OMP owns durable-memory storage and managed skills; this plugin owns only the marked `learner` advisor entry, one ticket action tool, and a pure operation-report formatter.
 
 ## Install
 
@@ -22,7 +22,7 @@ When tool ownership is unclear, inspect the user's own plugin repositories and i
 When a user explicitly requests verification support for an accepted shared or project rule, Learner can file a reviewable verifier-check proposal—not an executable check—with source evidence, candidate owner, deterministic or agentic classification, Gold condition, expected PASS/FAIL/BLOCKED evidence, and non-goals. Reusable checks route to `klondikemarlen/marlens-skills-rules-and-tools`, project-only checks to the active project, and verifier runtime or discovery gaps to `klondikemarlen/omp-verifier`.
 
 Ordinary requests, verifier evidence, PASS/FAIL/BLOCKED feedback, one-off wording, and uncertainty are ignored. Read-only/remote-only activity, unrelated filter/UI review, and Python eval failures alone do not justify learning, tickets, or advice. Learner does not edit files, run commands, file pull requests, or start a second agent session.
-Successful learning/ticket actions may produce one concise, evidence-backed operation result; no eligible action means no delivered Learner message. Failed eligible actions remain non-blocking and report only observed missing prerequisites, denied approval, or tool errors. See [Operation Results and Silence](docs/architecture/ownership-and-signals.md#operation-results-and-silence) for the result shape and enforcement boundary.
+Successful learning/ticket actions produce one concise, evidence-backed readable operation report; no eligible action means no delivered Learner message. Each operation keeps its own outcome and observed acknowledgment, exact returned URL, or bounded error. Failed eligible actions remain non-blocking. Structured records remain available for programmatic use. See [Operation Results and Silence](docs/architecture/ownership-and-signals.md#operation-results-and-silence) for the result shape and enforcement boundary.
 
 Repeated failed or unchanged edit calls are blocked with a recovery prompt so the agent can re-read the current state and retry with a fresh anchor.
 
@@ -30,11 +30,11 @@ Learner and `omp-verifier` preserve each other's marked roster entries on fresh 
 
 ### Stock OMP Tool Grants
 
-The generated Learner roster grants `read`, `grep`, `glob`, `learn`, and `eval`. Stock OMP does not directly expose extension tools to named advisors; Learner uses `display(await tool.learner_file_ticket({...}))` through the built-in JavaScript runtime instead. The existing ticket tool is enabled by default in the session and retains its native write-approval gate, validation, routing, deduplication, and redaction. No OMP patch, new action pipeline, or replacement agent runtime is required.
+The generated Learner roster grants `read`, `grep`, `glob`, `learn`, and `eval`. Stock OMP does not directly expose extension tools to named advisors; Learner uses `display(await tool.learner_file_ticket({...}))` through the built-in JavaScript runtime for authorized ticket actions. The existing ticket tool is enabled by default in the session and retains its native write-approval gate, validation, routing, deduplication, and redaction. After eligible actions, the same bridge calls the read-only `learner_report_operations` formatter with `{ records, format: 'text' }`; native notes relay only its rendered text. Machine consumers can request `format: 'json'`; both formats retain the same records in `details.records`. No OMP patch, new action pipeline, or replacement agent runtime is required.
 
 Explicit user advisor overrides are preserved. An override must include `eval` to support ticket dispatch; disabled/unavailable JavaScript or a disabled ticket tool is an honest blocker for an otherwise eligible proposal. Do not bypass denial or silently change approval policies.
 
-`eval` is execution-capable and can reach enabled primary-session tools. Restricting Learner to the one ticket-tool call is prompt policy, not a hard ticket-only sandbox. The generated guidance forbids direct implementation imports, helper definitions, package installation, file/network access, shell commands, verifier checks, and unrelated tool calls through eval.
+`eval` is execution-capable and can reach enabled primary-session tools. Restricting Learner to ticket dispatch and pure reporting is prompt policy, not a hard sandbox. The generated guidance forbids direct implementation imports, helper definitions, package installation, file/network access, shell commands, verifier checks, and unrelated tool calls through eval. The formatter only renders supplied evidence; it neither executes/retries actions nor independently proves their outcomes. Native transport may still label the resulting note **Advisor**.
 
 ### Guidance lifecycle
 
@@ -57,13 +57,14 @@ Setup and the next session after a reinstall refresh the generated guidance. `/l
 After a release is merged to `main` and reachable on GitHub:
 
 ```bash
+omp plugin uninstall omp-learner
 omp plugin install github:klondikemarlen/omp-learner --force
 omp plugin list --json
 ```
 
-Confirm the listing contains an enabled `omp-learner` entry with `./omp-plugin/index.ts`, then restart OMP. In a fresh session, run `/learner status` and inspect `/advisor configure` at user scope.
+Confirm the listing contains an enabled `omp-learner` entry with `./omp-plugin/index.ts` and the released package version, then restart OMP. In a fresh session, run `/learner status` and inspect `/advisor status` for a resolved Learner model; exercise command autocomplete and readable reporting.
 
-Run ticket-route checks locally with `npm test`; it exercises every target without creating GitHub issues. Use `learner_file_ticket` only for a real, high-confidence improvement that needs tracked work—never as release-verification evidence.
+Run local checks with `npm test`; they cover readable/JSON report parity, acknowledgment, exact created/reused URLs, multiline evidence, mixed outcomes, and every ticket target without creating GitHub issues. For native reporter QA, use isolated ticket routing and compare the completed named Learner transcript, actual tool/reporter evidence, and delivered primary notes. Cover eligible acknowledgment, creation/reuse, denial/error, and silent excluded/no-action paths. Use `learner_file_ticket` against real GitHub only for a genuine authorized improvement—never to create release-verification fixtures.
 
 ## GitHub Actions pinning
 

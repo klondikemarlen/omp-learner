@@ -17,7 +17,7 @@ Keep these outcomes separate:
 
 For a verifier-check proposal, the request must explicitly seek verification support for an accepted shared or project rule. Include the accepted rule, source evidence, candidate owner, deterministic or agentic classification, Gold condition, expected PASS/FAIL/BLOCKED evidence, and non-goals. It is a proposal only: Learner must not generate executable checks, commands, or run them. Ordinary verifier results are not feedback to be learned or ticketed.
 
-## Stock OMP Ticket Transport
+## Stock OMP Tool Transport
 
 Stock OMP's named-advisor tool pool contains built-ins, not registered extension tools. Learner grants the native `eval` tool and uses its JavaScript session-tool bridge:
 
@@ -25,15 +25,15 @@ Stock OMP's named-advisor tool pool contains built-ins, not registered extension
 display(await tool.learner_file_ticket({ target, title, proposal, evidence, confidence: 'high' }));
 ```
 
-The ticket tool is enabled by default rather than hidden/inactive, so stock dispatch can resolve it. The bridge invokes the same registered tool and native approval wrapper; it does not import the implementation or duplicate the action pipeline. The advisor still selects the eligible action and executes it. The returned `text`, `details.created`, `details.url`, and `hasError` when present are observed operation evidence; a thrown error or error result is not success.
+The ticket tool is enabled by default rather than hidden/inactive, so stock dispatch can resolve it. The bridge invokes the same registered tool and native approval wrapper; it does not import the implementation or duplicate the action pipeline. The advisor still selects the eligible action and executes it. The returned `text`, `details.created`, `details.url`, and `hasError` when present are observed operation evidence; a thrown error or error result is not success. The read-only `learner_report_operations` tool uses the same supported bridge for formatting only.
 
-The generated roster uses `tools: [read, grep, glob, learn, eval]`. User-owned tool/model/cadence overrides remain authoritative and are not rewritten by the plugin. An override without `eval`, an unavailable JavaScript runtime, or a disabled session ticket tool blocks an eligible ticket operation. Existing user approval/denial policies remain authoritative.
+The generated roster uses `tools: [read, grep, glob, learn, eval]`. User-owned tool/model/cadence overrides remain authoritative and are not rewritten by the plugin. An override without `eval`, an unavailable JavaScript runtime, or a disabled session ticket tool blocks an eligible ticket operation. Existing user approval/denial policies remain authoritative. If the reporting bridge is unavailable or denied, generated guidance permits only the same plain-text layout with observed eligible-operation evidence, without pretending the formatter ran or bypassing the override.
 
-**Capability boundary:** Native `eval` is execution-capable and can dispatch enabled primary-session tools; the Learner-specific ticket-only restriction is prompt policy, not a hard sandbox. The guidance forbids implementation imports, helper definitions, dependency installation, direct file/network access, commands, verifier execution, and other eval-bridged tools. No model/provider change, unconditional runner, or custom agent runtime is introduced.
+**Capability boundary:** Native `eval` is execution-capable and can dispatch enabled primary-session tools; restricting Learner to ticket dispatch and read-only reporting is prompt policy, not a hard sandbox. The guidance forbids implementation imports, helper definitions, dependency installation, direct file/network access, commands, verifier execution, and unrelated eval-bridged tools. No model/provider change, unconditional runner, or custom agent runtime is introduced.
 
 ## Operation Results and Silence
 
-The generated advisor prompt keeps the model as the eligible-signal selector and executor. It uses only the existing core `learn` and approval-gated `learner_file_ticket` action paths. After an eligible action, it may deliver one non-blocking `advise` note (`severity: nit`) containing a JSON array of results, with no accompanying review, recommendations, recovery instructions, strategy, progress, or no-action notices.
+The generated advisor prompt keeps the model as the eligible-signal selector and executor. It uses only the existing core `learn` and approval-gated `learner_file_ticket` action paths. After eligible actions, it collects their structured records and calls the pure Learner-owned reporter once. One non-blocking `advise` note (`severity: nit`) relays the returned readable text verbatim—not a JSON array, returned wrapper, code fence, model paraphrase, or added review, recommendations, recovery instructions, strategy, progress, or no-action notices.
 
 Each result contains:
 
@@ -43,6 +43,16 @@ Each result contains:
 | `outcome` | `acknowledged` for core learning; `created` or `reused` for ticket results; `blocked` for an observed missing prerequisite or denied approval; `failed` for an attempted tool error. |
 | `subject` | Concise lesson or proposal identity. |
 | `evidence` | Actual core acknowledgment, exact returned ticket URL, or bounded observed error. |
+
+[`report.mjs`](../../omp-plugin/learner/report.mjs) supplies the read-only `learner_report_operations` tool:
+
+```js
+display(await tool.learner_report_operations({ records, format: 'text' }));
+```
+
+Both `text` and `json` represent the same four fields; the returned `details.records` retains the structured array for machine consumers. Text renders `outcome operation: subject`, followed by indented evidence lines, with a blank line between operations. JSON serializes the records without changing their evidence. Multiline acknowledgments/errors remain multiline; exact URLs are preserved. Empty records render empty text (or `[]` for JSON), but the advisor must not call the reporter or deliver a note without an eligible action.
+
+The formatter has no action, retry, routing, memory, network, or filesystem responsibilities. It does not verify model-supplied records independently or upgrade acknowledgments into proof of persistence. Focused checks in [`verify-learning-reports.mjs`](../../scripts/verify-learning-reports.mjs) exercise observable representations and immutable inputs; native QA must compare completed Learner transcripts and delivered notes against actual tool/reporter results.
 
 The ticket tool's existing `details: { created, url }` is authoritative: `created: true` means created, `false` means reused. The corresponding explicit tool-result text carries the same outcome/URL if structured details are not visible to the advisor. No invented issue number, implementation claim, or automatic policy activation follows from filing a proposal.
 

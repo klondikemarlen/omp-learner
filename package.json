@@ -1,10 +1,10 @@
 {
   "name": "omp-learner",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "OMP advisor that stores durable feedback and routes approved improvements.",
   "type": "module",
   "scripts": {
-    "test": "node scripts/verify-learner.mjs"
+    "test": "node scripts/verify-learning-reports.mjs && node scripts/verify-learner.mjs"
   },
   "repository": {
     "type": "git",

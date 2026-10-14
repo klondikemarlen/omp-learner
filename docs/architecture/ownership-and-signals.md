@@ -2,7 +2,7 @@
 
 ## Purpose and Boundary
 
-OMP Learner is an advisor plugin for two distinct outcomes: retain explicit, high-confidence durable feedback with OMP's native `learn` tool, or—only when tracked work is explicitly warranted—create one reviewable GitHub issue through the approval-gated `learner_file_ticket` tool. OMP's core owns durable-memory storage and managed skills. Learner does not implement a parallel memory store, replace the native learning workflow, edit proposed changes, execute proposed checks, or create pull requests.
+OMP Learner turns high-confidence actionable corrections into one reviewable GitHub issue through the approval-gated `learner_file_ticket` tool before optional supplementary memory. Personal preferences without an actionable repository change may use OMP's native `learn` tool alone. OMP's core owns durable-memory storage and managed skills. Learner does not implement a parallel memory store, replace the native learning workflow, edit proposed changes, execute proposed checks, or create pull requests.
 
 The active agent directory owns Learner's generated configuration and marked advisor guidance. Setup and session reconciliation update Learner's marked advisor block while preserving other roster entries; disabling removes Learner's marked block and recognizable generated guidance while retaining disabled configuration and user-owned notes. See [`config.mjs`](../../omp-plugin/learner/config.mjs) and the focused preservation checks in [`verify-learner.mjs`](../../scripts/verify-learner.mjs).
 
@@ -12,8 +12,8 @@ The advisor reviews completed turns for explicit, durable feedback about style, 
 
 Keep these outcomes separate:
 
-1. **Acknowledged lesson:** For high-confidence reusable feedback, Learner calls OMP's core `learn` tool once with a concise lesson and source context. Report the actual acknowledgment, not stronger backend persistence than the tool proves. This does not itself justify a GitHub issue or repeating an action already completed by the primary agent.
-2. **Reviewable tracked proposal:** When explicit user intent and current source evidence establish work needing owner review, Learner may file one high-confidence issue. Ticket filing is a write-approval tool, deduplicates by a stable fingerprint, and redacts some common secret forms. It does not implement the proposal.
+1. **Reviewable tracked proposal:** Current high-confidence evidence of an actionable repository correction is sufficient to file one issue; no separate request to track work is required. File before optional supplementary memory. Ticket filing retains native write approval, deduplicates by a stable fingerprint, and redacts some common secret forms. It does not implement the proposal.
+2. **Acknowledged lesson:** Personal preferences without an actionable repository change may use core `learn` alone. An actionable lesson may also be retained after its ticket action. Report the actual core acknowledgment, not stronger backend persistence than the tool proves. A prior memory acknowledgment must not suppress a missing ticket; an already completed ticket or learning operation must not be repeated.
 
 For a verifier-check proposal, the request must explicitly seek verification support for an accepted shared or project rule. Include the accepted rule, source evidence, candidate owner, deterministic or agentic classification, Gold condition, expected PASS/FAIL/BLOCKED evidence, and non-goals. It is a proposal only: Learner must not generate executable checks, commands, or run them. Ordinary verifier results are not feedback to be learned or ticketed.
 
@@ -56,11 +56,11 @@ The formatter has no action, retry, routing, memory, network, or filesystem resp
 
 The ticket tool's existing `details: { created, url }` is authoritative: `created: true` means created, `false` means reused. The corresponding explicit tool-result text carries the same outcome/URL if structured details are not visible to the advisor. No invented issue number, implementation claim, or automatic policy activation follows from filing a proposal.
 
-Learning acknowledgment is not an independent confirmation that backend consolidation or durable storage completed. Do not upgrade it to a stronger persistence claim. If a lesson and an authorized ticket are both attempted, report their observed outcomes separately; success or failure of one does not establish the other's outcome.
+Learning acknowledgment is not an independent confirmation that backend consolidation or durable storage completed, and is not completion of an actionable ticket proposal. Do not upgrade it to a stronger persistence claim. If a ticket and optional lesson are both attempted, report their observed outcomes separately; success or failure of one does not establish the other's outcome.
 
 No eligible signal means no learning/ticket action and no `advise` call. Ordinary requests, uncertainty, read-only/remote-only activity alone, unrelated UI/filter review, Python eval failures, and verifier PASS/FAIL/BLOCKED results remain silent. An unrelated failure or ineligible signal must not become a Learner blocker. Eligible failures use non-blocking `nit` severity, do not stop primary work, and do not bypass denied approval.
 
-**Enforcement boundary:** Result-only delivery, signal selection, once-only action/reporting, and silence are generated prompt policy—not a new programmatic admission filter or a guarantee about every future model decision. OMP owns native advisor scheduling, tool availability, approval, and delivery; its UI may still label these messages **Advisor**. The plugin does not change model/provider routes, user advisor overrides, independent advisors, native memory ownership, or the existing ticket routing, deduplication, and redaction behavior.
+**Enforcement boundary:** Ticket-first selection, evidence eligibility, result-only delivery, once-only reporting, ownership reasoning, and silence are generated prompt policy—not a programmatic admission filter or guarantee about every future model decision. The ticket tool separately enforces allowed repository destinations before issue lookup/create. OMP owns native advisor scheduling, tool availability, approval, delivery, and memory; its UI may still label these messages **Advisor**. Model/provider routes, user advisor overrides, independent advisors, deduplication, and redaction remain unchanged.
 
 ## Ownership and Routing
 
@@ -68,14 +68,21 @@ The selected target must match the actual behavior owner, not the repository whe
 
 | Concern | Learner target | Destination and boundary |
 | --- | --- | --- |
-| Reusable guidance or a requested shared style convention | `knowledge_base` | Configured generic knowledge base; defaults to [`omp-config`](https://github.com/klondikemarlen/omp-config). Shared lesson requests use core `learn` first and then a reviewable ticket when explicitly requested. |
+| Reusable guidance or a shared style convention | `knowledge_base` | Configured shared-guidance repository; defaults to [`marlens-skills-rules-and-tools`](https://github.com/klondikemarlen/marlens-skills-rules-and-tools). Ticket first, optional core memory afterward. |
 | Active-project implementation or project-only verification rule | `local` or `project_check` | The active checkout's GitHub `origin`; local tickets are not the same as project-check proposals. |
 | Learner's own command, advisor, ticket tool, configuration, or guidance lifecycle | `learner` | [`omp-learner`](https://github.com/klondikemarlen/omp-learner). Do not route generic OMP, built-in tool, browser, GraphQL, repository-boundary, or other-plugin behavior here. |
 | Reusable verification of an accepted shared rule | `reusable_check` | [`marlens-skills-rules-and-tools`](https://github.com/klondikemarlen/marlens-skills-rules-and-tools) owns reusable guidance, package-owned quality policies, and check implementations. Learner submits a reviewable proposal, not a check implementation. |
 | Project-only verification of an accepted project rule | `project_check` | The active project's `origin`; the project owns the rule and its check proposal. |
 | Verifier discovery, execution, trigger/suppression/evidence, or advisor correction runtime | `verifier` | [`omp-verifier`](https://github.com/klondikemarlen/omp-verifier) owns this runtime. Do not send these concerns to Learner or invent a generic check policy. |
+| Evidenced related user-owned project | `related` + `repository` | A normalized `klondikemarlen/repository`, such as [`omp-soft-boundary-guard`](https://github.com/klondikemarlen/omp-soft-boundary-guard). No external owner or fallback destination. |
 
-When ownership is unclear, inspect available source and plugin metadata before routing; do not guess from the surface where a problem appeared. A ticket target is not proof that the destination owns the concern.
+When ownership is unclear, inspect available source and installed/plugin metadata before routing; do not guess from the surface where a problem appeared. A ticket target is not proof that the destination owns the concern. Do not file upstream OMP issues or redirect outside-owner concerns into unrelated user projects.
+
+The runtime boundary permits the active checkout's normalized GitHub `origin` or `klondikemarlen/*`. Related targets require the latter; a configured knowledge base outside that namespace must match the active origin case-insensitively. Missing/non-GitHub origin does not prevent a user-owned shared or related destination, but cannot authorize a project or other external destination. Rejection occurs before any GitHub issue lookup/create, without fallback. Native approval remains required.
+
+The default shared target changes from `klondikemarlen/omp-config` to `klondikemarlen/marlens-skills-rules-and-tools`. Reads expose the migrated configuration without writing; setup/session reconciliation persists it through the existing configuration writer. Other explicit destinations and disabled state remain intact. Actual local/related tickets for `omp-config` retain that repository rather than undergoing shared-default migration.
+
+Soft-boundary-guard's installed extension is advisory and fail-open, so its warnings do not enforce Learner's restriction. Learner owns this narrow ticket-destination policy; no guard runtime, reviewed policy, credentials, or global model settings are changed.
 
 ## Proposal Hygiene and Authority
 
@@ -83,7 +90,7 @@ Ticket fields are normalized and length-limited before filing. Current source ev
 
 An open issue matching the generated fingerprint for repository, title, proposal, proposal type, and candidate owner is returned instead of filing another. This is best-effort duplicate suppression, not a replacement for owner triage or a guarantee that semantically similar issues are merged.
 
-Learner may retain a lesson or submit a proposal, but ownership remains with the destination maintainers: they decide whether to accept, refine, implement, or close it. Learner does not change the accepted rule, claim a check has been installed, or infer permission to file from a failure report alone.
+Destination maintainers decide whether to accept, refine, implement, or close a proposal. Learner does not change the accepted rule or claim that a check has been installed. Ordinary failures without an eligible durable correction do not justify a ticket.
 
 ## Evidence and Source Conflicts
 

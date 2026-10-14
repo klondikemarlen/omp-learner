@@ -1,10 +1,10 @@
 {
   "name": "omp-learner",
-  "version": "2.3.0",
-  "description": "OMP advisor that stores durable feedback and routes approved improvements.",
+  "version": "2.4.0",
+  "description": "OMP advisor that turns actionable feedback into bounded GitHub proposals.",
   "type": "module",
   "scripts": {
-    "test": "node scripts/verify-learning-reports.mjs && node scripts/verify-learner.mjs"
+    "test": "node scripts/verify-learning-reports.mjs && node scripts/verify-learner.mjs && node scripts/verify-ticket-boundaries.mjs"
   },
   "repository": {
     "type": "git",

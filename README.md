@@ -1,6 +1,6 @@
 # OMP Learner
 
-OMP Learner is a small advisor plugin that turns high-confidence, actionable feedback into reviewable GitHub issues. Memory through OMP's native `learn` tool is supplementary; personal preferences without a repository change may remain memory-only. OMP owns durable-memory storage and managed skills; this plugin owns the marked `learner` advisor entry, one bounded ticket action tool, and a pure operation-report formatter.
+OMP Learner captures the user's durable personal preferences as shared, reviewable guidance proposals so other projects can benefit without repeating the same corrections. Reusable preferences become GitHub issues in the configured shared skills/rules repository; genuinely project-specific corrections stay with their project. OMP's native `learn` memory is supplementary, not proof of global availability. This plugin owns the marked `learner` advisor entry, one bounded ticket action tool, and a pure operation-report formatter.
 
 ## Install
 
@@ -14,9 +14,13 @@ Optional support: [Ko-fi](https://ko-fi.com/klondikemarlen).
 
 ## Advisor and core learning
 
-When enabled, Learner installs a marked `learner` advisor beside OMP's `default` advisor. It can inspect with `read`, `grep`, and `glob`, then files one deduplicated, evidence-backed issue for an actionable correction to code style, tests, commits, workflow, tooling, or maintained project guidance. No separate request to track the correction is required; native tool approval still applies.
+When enabled, Learner installs a marked `learner` advisor beside OMP's `default` advisor. It can inspect with `read`, `grep`, and `glob`, then files one deduplicated, evidence-backed issue for high-confidence durable feedback. Personal code-style, testing, workflow, communication, and interaction preferences are actionable shared-guidance proposals even when no product source-code change is requested. No separate request to track the preference is required; native tool approval still applies.
 
-Ticket filing comes before optional supplementary memory. An earlier `Lesson stored.` acknowledgment does not complete a missing ticket action. A returned existing ticket completes the action without creating another issue. Personal preferences with no actionable repository change can use core `learn` alone.
+A preference first expressed while working in one named repository is not automatically project-specific. Reusable preferences route to the shared knowledge base; only explicitly project-limited or domain/schema/implementation-dependent requirements route to the active project. One-off wording and already-covered guidance do not justify new issues.
+
+Ticket filing comes before optional supplementary memory. An earlier `Lesson stored.` acknowledgment does not complete a missing shared-ticket action: OMP memory may be project- or worktree-scoped. A returned existing ticket completes the capture without another issue. Denied, unavailable, or failed ticket filing remains blocked/failed rather than being replaced by memory-only success.
+
+**Recorded is not active:** a shared issue makes the preference reviewable in the shared repository; it does not itself install a global rule. Cross-project behavior depends on the guidance being reviewed, implemented, released, and installed through the shared package's normal workflow. Learner does not automatically implement proposals or change OMP's memory backend.
 
 Project-only proposals route to the active checkout's GitHub `origin`. Shared guidance defaults to [`klondikemarlen/marlens-skills-rules-and-tools`](https://github.com/klondikemarlen/marlens-skills-rules-and-tools). The previous generic `klondikemarlen/omp-config` default migrates to this shared target; other explicit configured targets are preserved, subject to the destination restriction.
 
@@ -69,7 +73,7 @@ omp plugin list --json
 
 Confirm the listing contains an enabled `omp-learner` entry with `./omp-plugin/index.ts` and the released package version, then restart OMP. In a fresh session, run `/learner status` and inspect `/advisor status` for a resolved Learner model; exercise command autocomplete and readable reporting.
 
-Run local checks with `npm test`; they cover configuration migration, readable/JSON report parity, acknowledgment, exact created/reused URLs, multiline evidence, mixed outcomes, every ticket target, and destination rejection before issue actions without creating GitHub issues. For native QA, use isolated ticket routing and compare the completed named Learner transcript, actual tool/reporter evidence, and delivered primary notes. Cover automatic project/shared tickets without a separate tracking request, a prior memory acknowledgment with no ticket, existing-ticket reuse, related user-owned routing, excluded external ownership, and silent ordinary work. Use `learner_file_ticket` against real GitHub only for a genuine authorized improvement—never to create release-verification fixtures.
+Run local checks with `npm test`; they cover configuration migration, readable/JSON report parity, acknowledgment, exact created/reused URLs, multiline evidence, mixed outcomes, every ticket target, and destination rejection before issue actions without creating GitHub issues. For native QA, use isolated ticket routing and compare completed named Learner transcripts, actual tool/reporter evidence, and delivered primary notes. In distinct project contexts, verify reusable coding and communication preferences select the shared target without a separate tracking request, including after a prior memory acknowledgment. Contrast an explicitly project-only requirement, denied ticket action, excluded external ownership, and silent ordinary work. Reports must not claim a created issue is active global guidance. Use real GitHub only for genuine authorized improvements—never release-verification fixtures.
 
 ## GitHub Actions pinning
 

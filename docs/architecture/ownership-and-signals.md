@@ -2,18 +2,18 @@
 
 ## Purpose and Boundary
 
-OMP Learner turns high-confidence actionable corrections into one reviewable GitHub issue through the approval-gated `learner_file_ticket` tool before optional supplementary memory. Personal preferences without an actionable repository change may use OMP's native `learn` tool alone. OMP's core owns durable-memory storage and managed skills. Learner does not implement a parallel memory store, replace the native learning workflow, edit proposed changes, execute proposed checks, or create pull requests.
+OMP Learner captures the user's durable reusable preferences as shared guidance proposals so other projects can benefit without repeated corrections. It files one reviewable GitHub issue through the approval-gated `learner_file_ticket` tool before optional supplementary memory; genuinely project-specific corrections stay with their owner. OMP's core owns durable-memory storage and managed skills. Learner does not implement a parallel memory store, automatically implement proposed guidance, execute proposed checks, or create pull requests.
 
 The active agent directory owns Learner's generated configuration and marked advisor guidance. Setup and session reconciliation update Learner's marked advisor block while preserving other roster entries; disabling removes Learner's marked block and recognizable generated guidance while retaining disabled configuration and user-owned notes. See [`config.mjs`](../../omp-plugin/learner/config.mjs) and the focused preservation checks in [`verify-learner.mjs`](../../scripts/verify-learner.mjs).
 
 ## Signal Eligibility and Outcomes
 
-The advisor reviews completed turns for explicit, durable feedback about style, tests, commits, workflow, tooling, or stable project knowledge. Ordinary task requests, verifier PASS/FAIL/BLOCKED evidence, one-off wording, and uncertainty are not learning or ticket signals. High confidence and reusability are required; historic evidence alone is not proof that an implementation still fails.
+The advisor reviews completed turns for explicit, durable feedback about personal style, tests, commits, workflow, tooling, communication, interaction, or stable project knowledge. A reusable personal preference is an actionable shared-guidance proposal even without a product code-change request. Its first appearance in one project does not make it project-local; only explicitly project-limited or domain/schema/implementation-dependent requirements stay local. Ordinary task requests, verifier results, one-off wording, uncertainty, and already-covered guidance do not justify new tickets. Current high-confidence evidence remains required.
 
 Keep these outcomes separate:
 
-1. **Reviewable tracked proposal:** Current high-confidence evidence of an actionable repository correction is sufficient to file one issue; no separate request to track work is required. File before optional supplementary memory. Ticket filing retains native write approval, deduplicates by a stable fingerprint, and redacts some common secret forms. It does not implement the proposal.
-2. **Acknowledged lesson:** Personal preferences without an actionable repository change may use core `learn` alone. An actionable lesson may also be retained after its ticket action. Report the actual core acknowledgment, not stronger backend persistence than the tool proves. A prior memory acknowledgment must not suppress a missing ticket; an already completed ticket or learning operation must not be repeated.
+1. **Reviewable tracked proposal:** Capture reusable personal preferences in the configured shared skills/rules repository without another tracking request. Capture genuinely project-specific corrections in the active project. File before optional supplementary memory. Ticket filing retains native write approval, deduplication, and redaction. A created/reused issue records the proposal, not implementation or global activation.
+2. **Supplementary memory acknowledgment:** A core `learn` acknowledgment is evidence only of that observed operation. Its memory bank may be project- or worktree-scoped; never treat it as proof that another project can use the preference. A prior acknowledgment does not suppress a missing shared ticket. Denied/failed ticket capture stays blocked/failed, not memory-only success. Do not repeat completed operations.
 
 For a verifier-check proposal, the request must explicitly seek verification support for an accepted shared or project rule. Include the accepted rule, source evidence, candidate owner, deterministic or agentic classification, Gold condition, expected PASS/FAIL/BLOCKED evidence, and non-goals. It is a proposal only: Learner must not generate executable checks, commands, or run them. Ordinary verifier results are not feedback to be learned or ticketed.
 
@@ -56,7 +56,7 @@ The formatter has no action, retry, routing, memory, network, or filesystem resp
 
 The ticket tool's existing `details: { created, url }` is authoritative: `created: true` means created, `false` means reused. The corresponding explicit tool-result text carries the same outcome/URL if structured details are not visible to the advisor. No invented issue number, implementation claim, or automatic policy activation follows from filing a proposal.
 
-Learning acknowledgment is not an independent confirmation that backend consolidation or durable storage completed, and is not completion of an actionable ticket proposal. Do not upgrade it to a stronger persistence claim. If a ticket and optional lesson are both attempted, report their observed outcomes separately; success or failure of one does not establish the other's outcome.
+Learning acknowledgment is not confirmation of backend consolidation, global availability, or completion of the shared-ticket action. A shared issue is a central, reviewable record; the preference becomes active cross-project guidance only after the owning shared package has implemented, reviewed, released, and installed it. Learner does not perform those steps or claim they occurred without evidence. Report ticket and optional memory outcomes independently.
 
 No eligible signal means no learning/ticket action and no `advise` call. Ordinary requests, uncertainty, read-only/remote-only activity alone, unrelated UI/filter review, Python eval failures, and verifier PASS/FAIL/BLOCKED results remain silent. An unrelated failure or ineligible signal must not become a Learner blocker. Eligible failures use non-blocking `nit` severity, do not stop primary work, and do not bypass denied approval.
 
@@ -68,8 +68,8 @@ The selected target must match the actual behavior owner, not the repository whe
 
 | Concern | Learner target | Destination and boundary |
 | --- | --- | --- |
-| Reusable guidance or a shared style convention | `knowledge_base` | Configured shared-guidance repository; defaults to [`marlens-skills-rules-and-tools`](https://github.com/klondikemarlen/marlens-skills-rules-and-tools). Ticket first, optional core memory afterward. |
-| Active-project implementation or project-only verification rule | `local` or `project_check` | The active checkout's GitHub `origin`; local tickets are not the same as project-check proposals. |
+| Reusable personal preference, guidance, or style convention | `knowledge_base` | Configured shared-guidance repository; defaults to [`marlens-skills-rules-and-tools`](https://github.com/klondikemarlen/marlens-skills-rules-and-tools). Project context alone does not localize a personal preference. Ticket first, optional core memory afterward. |
+| Explicitly project-specific or domain-dependent correction/verification rule | `local` or `project_check` | The active checkout's GitHub `origin`; do not promote product-specific facts into shared personal guidance. |
 | Learner's own command, advisor, ticket tool, configuration, or guidance lifecycle | `learner` | [`omp-learner`](https://github.com/klondikemarlen/omp-learner). Do not route generic OMP, built-in tool, browser, GraphQL, repository-boundary, or other-plugin behavior here. |
 | Reusable verification of an accepted shared rule | `reusable_check` | [`marlens-skills-rules-and-tools`](https://github.com/klondikemarlen/marlens-skills-rules-and-tools) owns reusable guidance, package-owned quality policies, and check implementations. Learner submits a reviewable proposal, not a check implementation. |
 | Project-only verification of an accepted project rule | `project_check` | The active project's `origin`; the project owns the rule and its check proposal. |

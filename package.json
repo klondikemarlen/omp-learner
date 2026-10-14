@@ -1,7 +1,7 @@
 {
   "name": "omp-learner",
-  "version": "2.4.0",
-  "description": "OMP advisor that turns actionable feedback into bounded GitHub proposals.",
+  "version": "2.4.1",
+  "description": "OMP advisor that captures reusable personal preferences as shared GitHub guidance proposals.",
   "type": "module",
   "scripts": {
     "test": "node scripts/verify-learning-reports.mjs && node scripts/verify-learner.mjs && node scripts/verify-ticket-boundaries.mjs"

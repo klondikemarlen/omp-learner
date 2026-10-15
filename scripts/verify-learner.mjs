@@ -18,7 +18,16 @@ advisors:
     tools: [read, grep, glob]
   # omp-verifier: advisor end
 `;
-const z = { object: (shape) => shape, array: (schema) => schema, enum: (values) => values, string: () => ({ optional() { return {}; } }) };
+const z = {
+  object: (shape) => shape,
+  array: (schema) => schema,
+  enum: (values) => values,
+  string: () => ({
+    max() { return this; },
+    optional() { return this; },
+    describe() { return this; },
+  }),
+};
 
 try {
   writeFileSync(path.join(agentDir, 'WATCHDOG.yml'), verifierRoster);
@@ -113,6 +122,45 @@ try {
   await ticketTool.execute('ticket-1b', { ...ticket('knowledge_base', 'Redact boundary secret'), evidence: `${'x'.repeat(3_990)} token=${boundarySecret}` }, undefined, undefined, { cwd: '/tmp/project' });
   const boundaryBody = calls[1][calls[1].indexOf('--body') + 1];
   assert.doesNotMatch(boundaryBody, new RegExp(boundarySecret));
+  const proposalPrefix = [
+    '## Change proposal',
+    '',
+    'Preserve this paragraph.',
+    '',
+    '- Preserve this list.',
+    '',
+    '```js',
+    'return true;',
+    '```',
+    '',
+  ].join('\n');
+  const multilineProposal = `${proposalPrefix}${'x'.repeat(5_161 - proposalPrefix.length)}`;
+  assert.equal(multilineProposal.length, 5_161);
+  const multilineEvidence = [
+    '## Source notes',
+    '',
+    'First evidence paragraph.',
+    '',
+    '- Keep the evidence list.',
+    '',
+    '```text',
+    'token=github_pat_abcdefghijklmnopqrstuvwxyz',
+    '```',
+  ].join('\n');
+  const sanitizedEvidence = multilineEvidence.replace(
+    'token=github_pat_abcdefghijklmnopqrstuvwxyz',
+    'token: [REDACTED]',
+  );
+  calls.length = 0;
+  await ticketTool.execute('ticket-1c', {
+    ...ticket('knowledge_base', 'Preserve complete multiline content'),
+    proposal: multilineProposal,
+    evidence: multilineEvidence,
+  }, undefined, undefined, { cwd: '/tmp/project' });
+  const multilineBody = calls[1][calls[1].indexOf('--body') + 1];
+  assert.ok(multilineBody.includes(multilineProposal), 'The entire 5,161-character proposal should be retained.');
+  assert.ok(multilineBody.includes(sanitizedEvidence), 'Evidence formatting should survive redaction.');
+  assert.doesNotMatch(multilineBody, /github_pat_abcdefghijklmnopqrstuvwxyz/);
 
   calls.length = 0;
   await ticketTool.execute('ticket-2', ticket('learner', 'Improve learner routing'), undefined, undefined, { cwd: '/tmp/project' });
@@ -122,14 +170,48 @@ try {
   await ticketTool.execute('ticket-3', ticket('local', 'Fix project-local behavior'), undefined, undefined, { cwd: '/tmp/project' });
   assert.ok(calls[0].includes('icefoganalytics/wrap'));
   calls.length = 0;
-  await ticketTool.execute('ticket-3a', verifierTicket('reusable_check', 'Propose shared verifier check'), undefined, undefined, { cwd: '/tmp/project' });
+  const verifierFieldPayloads = {
+    proposal: '## Proposed check\n\nPreserve this paragraph.\n\n- Preserve this list.\n\n```js\ncheck();\n```',
+    evidence: '## Source detail\n\nKeep this evidence paragraph.\n\n- Keep this list.',
+    acceptedRule: '## Accepted rule\n\nThe accepted rule spans paragraphs.\n\n- Keep its list.',
+    goldCondition: '## Gold condition\n\nGold evidence remains multiline.\n\n```text\nexpected\n```',
+    passEvidence: '## PASS evidence\n\npassword=must-not-leak\n\n```text\nPASS\n```',
+    failEvidence: '## FAIL evidence\n\nKeep this failure paragraph.\n\n- Keep this list.',
+    blockedEvidence: '## BLOCKED evidence\n\nKeep this blocked paragraph.\n\n```text\nBLOCKED\n```',
+    nonGoals: '## Non-goals\n\nKeep this non-goal paragraph.\n\n- Do not execute commands.',
+  };
+  calls.length = 0;
+  await ticketTool.execute('ticket-3a', {
+    ...verifierTicket('reusable_check', 'Propose shared verifier check'),
+    ...verifierFieldPayloads,
+  }, undefined, undefined, { cwd: '/tmp/project' });
   assert.ok(calls[0].includes('klondikemarlen/marlens-skills-rules-and-tools'));
   const verifierBody = calls[1][calls[1].indexOf('--body') + 1];
-  for (const heading of ['## Source evidence', '## Accepted shared/project rule', '## Gold condition', '## Expected PASS evidence', '## Expected FAIL evidence', '## Expected BLOCKED evidence', '## Non-goals']) {
-    assert.match(verifierBody, new RegExp(heading.slice(3)));
+  for (const [field, payload] of Object.entries(verifierFieldPayloads)) {
+    if (field !== 'passEvidence') {
+      assert.ok(verifierBody.includes(payload), `${field} should retain its multiline formatting.`);
+    }
   }
+  assert.ok(verifierBody.includes('## PASS evidence\n\npassword: [REDACTED]\n\n```text\nPASS\n```'));
+  assert.doesNotMatch(verifierBody, /must-not-leak/);
   assert.match(verifierBody, /\*\*Candidate owner:\*\* The team that owns this check\./);
   assert.match(verifierBody, /\*\*Classification:\*\* deterministic/);
+
+  const maximumVerifierInput = {
+    ...verifierTicket('reusable_check', 'Bound the complete generated body'),
+    proposal: 'x'.repeat(6_000),
+    evidence: 'x'.repeat(6_000),
+    acceptedRule: 'x'.repeat(6_000),
+    goldCondition: 'x'.repeat(6_000),
+    passEvidence: 'x'.repeat(6_000),
+    failEvidence: 'x'.repeat(6_000),
+    blockedEvidence: 'x'.repeat(6_000),
+    nonGoals: 'x'.repeat(6_000),
+  };
+  calls.length = 0;
+  await ticketTool.execute('ticket-3a-max', maximumVerifierInput, undefined, undefined, { cwd: '/tmp/project' });
+  const maximumVerifierBody = calls[1][calls[1].indexOf('--body') + 1];
+  assert.ok(maximumVerifierBody.length <= 65_536);
   calls.length = 0;
   await ticketTool.execute('ticket-3b', verifierTicket('project_check', 'Propose project verifier check', 'agentic'), undefined, undefined, { cwd: '/tmp/project' });
   assert.ok(calls[0].includes('icefoganalytics/wrap'));
@@ -157,11 +239,22 @@ try {
 
   let createdTickets = 0;
   const duplicateUrl = 'https://github.com/klondikemarlen/marlens-skills-rules-and-tools/issues/1';
+  const createdFingerprints = new Set();
+  const searchFingerprints = [];
   const deduplicatingTool = createLearnerTicketTool({
     agentDir,
     z,
     runGh: async (args) => {
-      if (args[1] === 'list') return JSON.stringify(createdTickets ? [{ url: duplicateUrl }] : []);
+      if (args[1] === 'list') {
+        const fingerprint = args[args.indexOf('--search') + 1];
+        searchFingerprints.push(fingerprint);
+        return JSON.stringify(createdFingerprints.has(fingerprint) ? [{ url: duplicateUrl }] : []);
+      }
+
+      const body = args[args.indexOf('--body') + 1];
+      const fingerprint = body.match(/<!-- omp-learner-ticket:([a-f0-9]{20}) -->/)?.[1];
+      assert.ok(fingerprint, 'Created issue body should contain its fingerprint.');
+      createdFingerprints.add(fingerprint);
       createdTickets += 1;
       return duplicateUrl;
     },
@@ -173,7 +266,24 @@ try {
     content: [{ type: 'text', text: `Existing learner ticket: ${duplicateUrl}` }],
     details: { created: false, url: duplicateUrl },
   });
+  assert.equal(searchFingerprints[0], searchFingerprints[1], 'The exact accepted proposal should reuse its marker.');
   assert.equal(createdTickets, 1);
+
+  const sharedMarkerPrefix = 'x'.repeat(2_000);
+  await deduplicatingTool.execute('ticket-suffix-a', {
+    ...ticket('knowledge_base', 'Suffix-sensitive marker'),
+    proposal: `${sharedMarkerPrefix} first suffix`,
+  });
+  await deduplicatingTool.execute('ticket-suffix-b', {
+    ...ticket('knowledge_base', 'Suffix-sensitive marker'),
+    proposal: `${sharedMarkerPrefix} second suffix`,
+  });
+  assert.notEqual(
+    searchFingerprints[2],
+    searchFingerprints[3],
+    'Different accepted proposal suffixes after the former 2,000-character cut must use different markers.',
+  );
+  assert.equal(createdTickets, 3, 'Distinct accepted proposals should each create an issue.');
 
   const commands = new Map();
   const events = new Map();

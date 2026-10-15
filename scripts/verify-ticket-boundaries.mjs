@@ -12,7 +12,11 @@ const configurationPath = path.join(configurationDirectory, 'config.json');
 const z = {
   object: (shape) => shape,
   enum: (values) => values,
-  string: () => ({ optional() { return {}; } }),
+  string: () => ({
+    max() { return this; },
+    optional() { return this; },
+    describe() { return this; },
+  }),
 };
 const createdUrl = 'https://github.com/klondikemarlen/omp-learner/issues/121';
 
@@ -144,6 +148,21 @@ try {
     /normalized GitHub owner\/repository/,
   );
   assert.equal(malformedCalls.calls.length, 0, 'Malformed repository must not reach GitHub issue actions.');
+
+  const oversizedCalls = createRecorder();
+  let originLookups = 0;
+  const oversizedProposalTool = createTool({
+    runGit: async () => {
+      originLookups += 1;
+      return 'git@github.com:example/project.git';
+    },
+    runGh: oversizedCalls.runGh,
+  });
+  await assert.rejects(
+    () => execute(oversizedProposalTool, proposal('local', 'Reject oversized proposal', { proposal: 'x'.repeat(6_001) })),
+  );
+  assert.equal(oversizedCalls.calls.length, 0, 'Oversized input must not reach any GitHub lookup or mutation.');
+  assert.equal(originLookups, 0, 'Oversized input must be rejected before repository resolution.');
 } finally {
   rmSync(agentDir, { recursive: true, force: true });
 }

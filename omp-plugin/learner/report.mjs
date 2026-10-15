@@ -13,12 +13,12 @@ export function createLearnerReportTool({ z }) {
   return {
     name: 'learner_report_operations',
     label: 'Report Learner Operations',
-    description: 'Render observed learning/ticket operation records as readable text or JSON. Pure, read-only formatting; never executes or retries an action. Returns the same structured records in details.records.',
+    description: 'Render observed guidance coverage and learning/ticket operation records as readable text or JSON. Pure, read-only formatting; never executes or retries an action. Returns the same structured records in details.records.',
     approval: 'read',
     parameters: z.object({
       records: z.array(z.object({
-        operation: z.enum(['learn', 'learner_file_ticket']),
-        outcome: z.enum(['acknowledged', 'created', 'reused', 'blocked', 'failed']),
+        operation: z.enum(['guidance_coverage', 'learn', 'learner_file_ticket']),
+        outcome: z.enum(['covered', 'not_covered', 'incomplete', 'acknowledged', 'created', 'reused', 'blocked', 'failed']),
         subject: z.string(),
         evidence: z.string(),
       })),

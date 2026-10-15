@@ -14,11 +14,13 @@ Optional support: [Ko-fi](https://ko-fi.com/klondikemarlen).
 
 ## Advisor and core learning
 
-When enabled, Learner installs a marked `learner` advisor beside OMP's `default` advisor. It can inspect with `read`, `grep`, and `glob`, then files one deduplicated, evidence-backed issue for high-confidence durable feedback. Personal code-style, testing, workflow, communication, and interaction preferences are actionable shared-guidance proposals even when no product source-code change is requested. No separate request to track the preference is required; native tool approval still applies.
+When enabled, Learner installs a marked `learner` advisor beside OMP's `default` advisor. It can inspect with `read`, `grep`, and `glob`, then files one deduplicated, evidence-backed issue for high-confidence durable feedback that is not already covered. Personal code-style, testing, workflow, communication, and interaction preferences are actionable shared-guidance proposals even when no product source-code change is requested. No separate request to track the preference is required; native tool approval still applies.
 
 A preference first expressed while working in one named repository is not automatically project-specific. Reusable preferences route to the shared knowledge base; only explicitly project-limited or domain/schema/implementation-dependent requirements route to the active project. One-off wording and already-covered guidance do not justify new issues.
 
-Ticket filing comes before optional supplementary memory. An earlier `Lesson stored.` acknowledgment does not complete a missing shared-ticket action: OMP memory may be project- or worktree-scoped. A returned existing ticket completes the capture without another issue. Denied, unavailable, or failed ticket filing remains blocked/failed rather than being replaced by memory-only success.
+Before proposing shared guidance, Learner compares the current signal with the target owner's current guidance and relevant completed work through a [bounded coverage review](docs/architecture/ownership-and-signals.md#current-shared-guidance-coverage). Equivalent released guidance yields a cited `covered guidance_coverage` result without another ticket. A genuinely different missing preference remains eligible; unavailable required sources yield `incomplete`, not an invented coverage claim. Archived conversations lacking ticket acknowledgments do not establish a present gap.
+
+For a genuinely missing preference, ticket filing comes before optional supplementary memory. An earlier `Lesson stored.` acknowledgment does not complete that shared-ticket action: OMP memory may be project- or worktree-scoped. A returned existing ticket completes the capture without another issue. Denied, unavailable, or failed ticket filing remains blocked/failed rather than being replaced by memory-only success.
 
 **Recorded is not active:** a shared issue makes the preference reviewable in the shared repository; it does not itself install a global rule. Cross-project behavior depends on the guidance being reviewed, implemented, released, and installed through the shared package's normal workflow. Learner does not automatically implement proposals or change OMP's memory backend.
 
@@ -31,11 +33,17 @@ When tool ownership is unclear, inspect installed/plugin source metadata and the
 When a user explicitly requests verification support for an accepted shared or project rule, Learner can file a reviewable verifier-check proposal—not an executable check—with source evidence, candidate owner, deterministic or agentic classification, Gold condition, expected PASS/FAIL/BLOCKED evidence, and non-goals. Reusable checks route to `klondikemarlen/marlens-skills-rules-and-tools`, project-only checks to the active project, and verifier runtime or discovery gaps to `klondikemarlen/omp-verifier`.
 
 Ordinary requests, verifier evidence, PASS/FAIL/BLOCKED feedback, one-off wording, and uncertainty are ignored. Read-only/remote-only activity, unrelated filter/UI review, and Python eval failures alone do not justify learning, tickets, or advice. Learner does not edit files, run commands, file pull requests, or start a second agent session.
-Successful learning/ticket actions produce one concise, evidence-backed readable operation report; no eligible action means no delivered Learner message. Each operation keeps its own outcome and observed acknowledgment, exact returned URL, or bounded error. Failed eligible actions remain non-blocking. Structured records remain available for programmatic use. See [Operation Results and Silence](docs/architecture/ownership-and-signals.md#operation-results-and-silence) for the result shape and enforcement boundary.
+Observed coverage decisions and learning/ticket actions produce one concise, evidence-backed readable report; no eligible signal means no delivered Learner message. Coverage is reported separately from actions, with its examined-source citation and `covered`, `not_covered`, or `incomplete` outcome. Each action keeps its own outcome and observed acknowledgment, exact returned URL, or bounded error. Failed eligible actions remain non-blocking. Structured records remain available for programmatic use. See [Operation Results and Silence](docs/architecture/ownership-and-signals.md#operation-results-and-silence) for the result shape and enforcement boundary.
 
 Repeated failed or unchanged edit calls are blocked with a recovery prompt so the agent can re-read the current state and retry with a fresh anchor.
 
 Learner and `omp-verifier` preserve each other's marked roster entries on fresh sessions. The advisor requires OMP's normal `advisor.enabled` setting and an `advisor` model role. Core learning additionally requires `autolearn.enabled` and a supported memory backend.
+
+### Ticket Content Limits
+
+Ticket filing preserves Markdown headings, paragraphs, lists, and code fences in proposals, evidence, and verifier-detail fields while redacting secrets. Each multiline field accepts up to 6,000 characters; titles accept 120, and candidate owners and related-repository inputs accept 200. The tool schema and description expose the remaining field limits and supported values (`confidence: 'high'`, optional `proposalType: 'verifier_check'`).
+
+An oversized field or generated issue body (maximum 65,536 characters) is rejected explicitly before repository resolution or GitHub issue lookup/create. Nothing is silently truncated. Deduplication includes the complete accepted, redacted proposal, so proposals that differ after the former 2,000-character cutoff remain distinct.
 
 ### Stock OMP Tool Grants
 

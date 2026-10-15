@@ -52,4 +52,19 @@ const textReport = await reporter.execute('text-report', { records: jsonReport.d
 assert.deepEqual(textReport.details.records, records);
 assert.equal(textReport.content[0].text, 'acknowledged learn: Keep explicit project invariants\n  Lesson stored.\n\nfailed learner_file_ticket: Document operation reports\n  GitHub authentication unavailable\n  No issue URL returned.');
 
+const coveredGuidance = Object.freeze({
+  operation: 'guidance_coverage',
+  outcome: 'covered',
+  subject: 'Use Update rather than Set for CRUD updates',
+  evidence: 'https://github.com/owner/guidance/blob/main/docs/code-organization.md#service-updates\nhttps://github.com/owner/guidance/pull/455 (merged)',
+});
+const coverageRecords = Object.freeze([coveredGuidance]);
+assert.equal(formatLearningOperations(coverageRecords, 'text'), 'covered guidance_coverage: Use Update rather than Set for CRUD updates\n  https://github.com/owner/guidance/blob/main/docs/code-organization.md#service-updates\n  https://github.com/owner/guidance/pull/455 (merged)');
+const coverageJsonReport = await reporter.execute('coverage-json-report', { records: coverageRecords, format: 'json' });
+assert.deepEqual(JSON.parse(coverageJsonReport.content[0].text), coverageRecords);
+assert.deepEqual(coverageJsonReport.details.records, coverageRecords);
+const coverageTextReport = await reporter.execute('coverage-text-report', { records: coverageJsonReport.details.records, format: 'text' });
+assert.equal(coverageTextReport.content[0].text, 'covered guidance_coverage: Use Update rather than Set for CRUD updates\n  https://github.com/owner/guidance/blob/main/docs/code-organization.md#service-updates\n  https://github.com/owner/guidance/pull/455 (merged)');
+assert.deepEqual(coverageTextReport.details.records, coverageRecords);
+
 console.log('learning report checks passed');

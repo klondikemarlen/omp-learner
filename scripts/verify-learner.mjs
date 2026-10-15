@@ -122,6 +122,7 @@ try {
   await ticketTool.execute('ticket-1b', { ...ticket('knowledge_base', 'Redact boundary secret'), evidence: `${'x'.repeat(3_990)} token=${boundarySecret}` }, undefined, undefined, { cwd: '/tmp/project' });
   const boundaryBody = calls[1][calls[1].indexOf('--body') + 1];
   assert.doesNotMatch(boundaryBody, new RegExp(boundarySecret));
+
   const proposalPrefix = [
     '## Change proposal',
     '',
@@ -135,7 +136,6 @@ try {
     '',
   ].join('\n');
   const multilineProposal = `${proposalPrefix}${'x'.repeat(5_161 - proposalPrefix.length)}`;
-  assert.equal(multilineProposal.length, 5_161);
   const multilineEvidence = [
     '## Source notes',
     '',
@@ -192,6 +192,7 @@ try {
       assert.ok(verifierBody.includes(payload), `${field} should retain its multiline formatting.`);
     }
   }
+
   assert.ok(verifierBody.includes('## PASS evidence\n\npassword: [REDACTED]\n\n```text\nPASS\n```'));
   assert.doesNotMatch(verifierBody, /must-not-leak/);
   assert.match(verifierBody, /\*\*Candidate owner:\*\* The team that owns this check\./);
@@ -212,6 +213,7 @@ try {
   await ticketTool.execute('ticket-3a-max', maximumVerifierInput, undefined, undefined, { cwd: '/tmp/project' });
   const maximumVerifierBody = calls[1][calls[1].indexOf('--body') + 1];
   assert.ok(maximumVerifierBody.length <= 65_536);
+
   calls.length = 0;
   await ticketTool.execute('ticket-3b', verifierTicket('project_check', 'Propose project verifier check', 'agentic'), undefined, undefined, { cwd: '/tmp/project' });
   assert.ok(calls[0].includes('icefoganalytics/wrap'));

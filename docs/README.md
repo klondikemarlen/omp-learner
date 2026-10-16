@@ -1,6 +1,6 @@
-# OMP Learner Knowledge Base
+# OMP Learner Maintainer Documentation
 
-This directory records durable project knowledge for Learner maintainers and reviewers. The [ownership and signal model](architecture/ownership-and-signals.md) describes what Learner owns, when it learns or proposes tracked work, how proposals route, and which evidence supports those boundaries.
+This directory documents Learner's own behavior, implementation, and integration contracts for maintainers and reviewers. It is not a store for general knowledge collected from other projects. Maintained reusable learning belongs in the user's configured shared knowledge base, defaulting to [`marlens-skills-rules-and-tools`](https://github.com/klondikemarlen/marlens-skills-rules-and-tools); project-specific knowledge belongs with its owning project. The [ownership and signal model](architecture/ownership-and-signals.md) explains classification, configurable proposal routing, supplied-verifier handoff, and the evidence supporting those boundaries.
 
 ## Authority and Publication
 

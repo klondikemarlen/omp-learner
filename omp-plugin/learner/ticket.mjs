@@ -15,10 +15,8 @@ const MAX_IDENTIFIER_LENGTH = 30;
 const MAX_ISSUE_BODY_LENGTH = 65_536;
 const FINGERPRINT_LENGTH = 20;
 const TARGETS = ['knowledge_base', 'local', 'learner', 'reusable_check', 'project_check', 'verifier', 'related'];
-const VERIFIER_REPOSITORIES = {
-  reusable_check: 'klondikemarlen/marlens-skills-rules-and-tools',
-  verifier: 'klondikemarlen/omp-verifier',
-};
+const VERIFIER_REPOSITORY = 'klondikemarlen/omp-verifier';
+const VERIFIER_TARGETS = ['reusable_check', 'project_check', 'verifier'];
 const VERIFIER_PROPOSAL = 'verifier_check';
 const CHECK_CLASSIFICATIONS = ['deterministic', 'agentic'];
 
@@ -26,7 +24,7 @@ export function createLearnerTicketTool({ agentDir, z, runGh = runGitHubCli, run
   return {
     name: 'learner_file_ticket',
     label: 'File Learner Improvement Ticket',
-    description: 'File one reviewable improvement proposal; never implement or activate it. Maximum lengths in characters: title 120; proposal and evidence 6,000 each; confidence 20 and must be high; proposalType 30 and, when present, must be verifier_check; candidateOwner and related repository 200 each; classification 20; acceptedRule, goldCondition, passEvidence, failEvidence, blockedEvidence, and nonGoals 6,000 each. The complete generated issue body is limited to 65,536 characters.',
+    description: 'File one classified, evidence-backed learning or implementation-improvement proposal; never implement or activate it. Shared rules/skills/workflows and reusable verifier changes belong to the configured shared owner; project corrections/integration stay with the project; target learner is only for this plugin, never general project knowledge. Supplied check execution belongs to omp-verifier. Maximum lengths in characters: title 120; proposal and evidence 6,000 each; confidence 20 and must be high; proposalType 30 and, when present, must be verifier_check; candidateOwner and related repository 200 each; classification 20; acceptedRule, goldCondition, passEvidence, failEvidence, blockedEvidence, and nonGoals 6,000 each. The complete generated issue body is limited to 65,536 characters.',
     approval: 'write',
     parameters: z.object({
       target: z.enum(TARGETS),
@@ -74,7 +72,7 @@ function normalizeTicket(params) {
   const confidence = clean(params.confidence, MAX_CONFIDENCE_LENGTH, 'confidence').toLowerCase();
   if (confidence !== 'high') throw new Error('Learner ticket filing requires high confidence.');
   const proposalType = optionalClean(params.proposalType, MAX_IDENTIFIER_LENGTH, 'proposalType');
-  if (VERIFIER_REPOSITORIES[target] || target === 'project_check') {
+  if (VERIFIER_TARGETS.includes(target)) {
     if (proposalType !== VERIFIER_PROPOSAL) throw new Error('Verifier-check proposals require explicit verification support.');
     const classification = clean(params.classification, MAX_CLASSIFICATION_LENGTH, 'classification').toLowerCase();
     if (!CHECK_CLASSIFICATIONS.includes(classification)) throw new Error('Verifier-check classification must be deterministic or agentic.');
@@ -138,8 +136,8 @@ function optionalClean(value, limit, fieldName) {
 
 async function resolveRepository(ticket, configuration, cwd, runGit, signal) {
   const { target } = ticket;
-  if (VERIFIER_REPOSITORIES[target]) {
-    return VERIFIER_REPOSITORIES[target];
+  if (target === 'verifier') {
+    return VERIFIER_REPOSITORY;
   }
 
   if (target === 'project_check' || target === 'local') {
@@ -158,17 +156,7 @@ async function resolveRepository(ticket, configuration, cwd, runGit, signal) {
     return LEARNER_REPOSITORY;
   }
 
-  const repository = normalizeDestinationRepository(configuration.knowledgeBaseRepository || DEFAULT_KNOWLEDGE_BASE_REPOSITORY);
-  if (isUserOwnedRepository(repository)) {
-    return repository;
-  }
-
-  const activeOrigin = await readOptionalGitHubOrigin(cwd, runGit, signal);
-  if (activeOrigin && repositoriesMatch(activeOrigin, repository)) {
-    return repository;
-  }
-
-  throw new Error(`Learner ticket repository boundary blocks configured destination ${repository}; only klondikemarlen/* repositories or the active GitHub origin are allowed.`);
+  return normalizeDestinationRepository(configuration.knowledgeBaseRepository || DEFAULT_KNOWLEDGE_BASE_REPOSITORY);
 }
 
 function normalizeDestinationRepository(value) {
@@ -183,26 +171,6 @@ function normalizeDestinationRepository(value) {
 
 function isUserOwnedRepository(repository) {
   return repository.split('/')[0].toLowerCase() === 'klondikemarlen';
-}
-
-function repositoriesMatch(left, right) {
-  return left.toLowerCase() === right.toLowerCase();
-}
-
-async function readOptionalGitHubOrigin(cwd, runGit, signal) {
-  if (!cwd) {
-    return undefined;
-  }
-
-  try {
-    return normalizeGitHubRemote(await runGit(cwd, signal));
-  } catch (error) {
-    if (signal?.aborted) {
-      throw error;
-    }
-
-    return undefined;
-  }
 }
 
 function normalizeGitHubRemote(remote) {

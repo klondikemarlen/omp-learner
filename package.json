@@ -1,7 +1,7 @@
 {
   "name": "omp-learner",
-  "version": "2.5.0",
-  "description": "OMP advisor that captures reusable personal preferences as shared GitHub guidance proposals.",
+  "version": "2.6.0",
+  "description": "OMP advisor that identifies and classifies learning for shared guidance and supplied-verifier integration.",
   "type": "module",
   "scripts": {
     "test": "node scripts/verify-learning-reports.mjs && node scripts/verify-learner.mjs && node scripts/verify-ticket-boundaries.mjs"

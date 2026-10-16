@@ -15,7 +15,7 @@ export function registerLearnerPlugin(pi) {
   }
 
   pi.registerCommand('learner', {
-    description: 'Configure the Learner advisor.',
+    description: 'Configure the learning classification and integration advisor.',
     getArgumentCompletions: completeCommand,
     handler: async (args, ctx) => handleCommand(pi, args, ctx),
   });
@@ -56,8 +56,9 @@ async function handleCommand(pi, args, ctx) {
       if (tokens.length > 2) return display(pi, 'Usage: /learner setup [owner/repository]');
       const configuration = configureLearner(currentAgentDir, { knowledgeBaseRepository: tokens[1] });
       const setupMessage = [
-        'Learner advisor enabled. Reusable personal preferences become shared-guidance issues; genuinely project-specific corrections stay with their project.',
-        'Destinations are limited to the active GitHub origin or klondikemarlen-owned repositories; related targets require evidence, and upstream or external issues are blocked.',
+        'Learner advisor enabled. Identify and classify durable learning for shared skills, rules, and workflows; owner-local corrections stay with their project.',
+        'Learner is not a general project-knowledge store. Verification proposals integrate supplied checks; omp-verifier owns their discovery and execution.',
+        'Shared guidance and reusable verifier proposals use your configured GitHub repository with native approval; local/project and related destinations keep their separate boundaries.',
         `Configured shared-guidance target: ${configuration.knowledgeBaseRepository}.`,
       ].join(' ');
       return display(pi, setupMessage);
@@ -82,8 +83,11 @@ function statusText(currentAgentDir) {
     'Learner status:',
     `advisor: ${configuration.enabled ? 'on' : 'off'}`,
     'core learning: uses OMP\'s learn tool when autolearn.enabled and a supported memory backend are configured',
-    'feedback handling: reusable personal preferences become shared-guidance issues; project-specific corrections stay local; memory is supplementary',
-    'ticket boundary: active GitHub origin or klondikemarlen-owned repositories; related targets require evidence; no upstream or external issues',
+    'purpose: identify and classify learning for shared skills, rules, workflows, and potential supplied verification',
+    'feedback handling: reusable learning becomes shared-guidance proposals; project-specific corrections stay with their owner; memory is supplementary',
+    'knowledge ownership: project facts stay in their owning project; Learner docs and issues concern this plugin',
+    'verification handoff: providers supply checks; Learner proposes integration; omp-verifier discovers and executes',
+    'ticket boundary: configured GitHub knowledge base for shared guidance/checks; active origin for project work; related targets retain their namespace restriction; native approval required',
     `shared guidance target: ${configuration.knowledgeBaseRepository}`,
     'shared capture: an issue records a proposal; active cross-project guidance requires review, release, and installation',
     `configuration: ${configurationPath(currentAgentDir)}`,

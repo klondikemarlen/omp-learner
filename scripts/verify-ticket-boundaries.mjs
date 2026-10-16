@@ -117,26 +117,40 @@ try {
   );
   assert.equal(rejectedRelatedCalls.calls.length, 0, 'Rejected related target must not fall back to another repository.');
 
-  configureKnowledgeBase('outside/shared-guidance');
-  const rejectedConfiguredCalls = createRecorder();
-  const rejectedConfiguredTool = createTool({
-    runGit: async () => 'git@github.com:active/project.git\n',
-    runGh: rejectedConfiguredCalls.runGh,
+  configureKnowledgeBase('AnotherOwner/shared-guidance');
+  const configuredCalls = createRecorder();
+  const configuredTool = createTool({
+    runGit: async () => {
+      throw new Error('An explicitly configured shared repository must not require the active origin.');
+    },
+    runGh: configuredCalls.runGh,
   });
-  await assert.rejects(
-    () => execute(rejectedConfiguredTool, proposal('knowledge_base', 'Reject external configured destination')),
-    /repository boundary blocks configured destination/,
-  );
-  assert.equal(rejectedConfiguredCalls.calls.length, 0, 'Rejected configured destination must not issue a GitHub issue action.');
+  await execute(configuredTool, proposal('knowledge_base', 'Use another user shared repository'));
+  assert.deepEqual(routedRepositories(configuredCalls.calls), ['AnotherOwner/shared-guidance', 'AnotherOwner/shared-guidance']);
 
-  configureKnowledgeBase('IceFogAnalytics/Wrap');
-  const matchingOriginCalls = createRecorder();
-  const matchingOriginTool = createTool({
-    runGit: async () => 'https://github.com/icefoganalytics/wrap.git\n',
-    runGh: matchingOriginCalls.runGh,
+  configuredCalls.calls.length = 0;
+  await execute(configuredTool, proposal('reusable_check', 'Use configured reusable verifier owner', {
+    proposalType: 'verifier_check',
+    candidateOwner: 'Shared package maintainers.',
+    acceptedRule: 'Never track an environment example containing credentials.',
+    classification: 'deterministic',
+    goldCondition: 'The declared supplied check verifies the accepted shared rule.',
+    passEvidence: 'PASS: no prohibited file is tracked.',
+    failEvidence: 'FAIL: a prohibited file is tracked.',
+    blockedEvidence: 'BLOCKED: required repository evidence is unavailable.',
+    nonGoals: 'Do not implement, install, or execute a check.',
+  }));
+  assert.deepEqual(routedRepositories(configuredCalls.calls), ['AnotherOwner/shared-guidance', 'AnotherOwner/shared-guidance']);
+
+  configureKnowledgeBase('AnotherOwner/..');
+  const malformedConfiguredCalls = createRecorder();
+  const malformedConfiguredTool = createTool({
+    runGit: async () => 'git@github.com:klondikemarlen/safe.git',
+    runGh: malformedConfiguredCalls.runGh,
   });
-  await execute(matchingOriginTool, proposal('knowledge_base', 'Allow configured active origin'));
-  assert.deepEqual(routedRepositories(matchingOriginCalls.calls), ['IceFogAnalytics/Wrap', 'IceFogAnalytics/Wrap']);
+  await assert.rejects(() => execute(malformedConfiguredTool, proposal('knowledge_base', 'Reject malformed shared repository')));
+  assert.equal(malformedConfiguredCalls.calls.length, 0, 'An invalid configured repository must not fall back or perform a GitHub action.');
+  configureKnowledgeBase();
 
   const malformedCalls = createRecorder();
   const malformedTool = createTool({

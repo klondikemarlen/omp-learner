@@ -17,6 +17,12 @@ const z = {
     optional() { return this; },
     describe() { return this; },
   }),
+  number: () => ({
+    int() { return this; },
+    positive() { return this; },
+    optional() { return this; },
+    describe() { return this; },
+  }),
 };
 const createdUrl = 'https://github.com/klondikemarlen/omp-learner/issues/121';
 

@@ -24,7 +24,7 @@ export function createLearnerTicketTool({ agentDir, z, runGh = runGitHubCli, run
   return {
     name: 'learner_file_ticket',
     label: 'File Learner Improvement Ticket',
-    description: 'File one classified, evidence-backed learning or implementation-improvement proposal; never implement or activate it. Shared rules/skills/workflows and reusable verifier changes belong to the configured shared owner; project corrections/integration stay with the project; target learner is only for this plugin, never general project knowledge. Supplied check execution belongs to omp-verifier. Maximum lengths in characters: title 120; proposal and evidence 6,000 each; confidence 20 and must be high; proposalType 30 and, when present, must be verifier_check; candidateOwner and related repository 200 each; classification 20; acceptedRule, goldCondition, passEvidence, failEvidence, blockedEvidence, and nonGoals 6,000 each. The complete generated issue body is limited to 65,536 characters.',
+    description: 'File one classified, evidence-backed learning or implementation-improvement proposal; never implement or activate it. Shared rules/skills/workflows and reusable verifier changes belong to the configured shared owner; project corrections/integration stay with the project; target learner is only for this plugin, never general project knowledge. Supplied check execution belongs to omp-verifier. Set existingIssueNumber only after inspecting an equivalent open proposal; its current OPEN state and canonical repository/issue URL are rechecked before returning a reused receipt. Maximum lengths in characters: title 120; proposal and evidence 6,000 each; confidence 20 and must be high; proposalType 30 and, when present, must be verifier_check; candidateOwner and related repository 200 each; classification 20; acceptedRule, goldCondition, passEvidence, failEvidence, blockedEvidence, and nonGoals 6,000 each. The complete generated issue body is limited to 65,536 characters.',
     approval: 'write',
     parameters: z.object({
       target: z.enum(TARGETS),
@@ -42,6 +42,7 @@ export function createLearnerTicketTool({ agentDir, z, runGh = runGitHubCli, run
       failEvidence: z.string().max(MAX_MULTILINE_FIELD_LENGTH).optional(),
       blockedEvidence: z.string().max(MAX_MULTILINE_FIELD_LENGTH).optional(),
       nonGoals: z.string().max(MAX_MULTILINE_FIELD_LENGTH).optional(),
+      existingIssueNumber: z.number().int().positive().optional().describe('Explicitly reuse an equivalent currently open issue in the resolved target repository.'),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const configuration = readConfiguration(resolveAgentDir(agentDir, ctx));
@@ -50,6 +51,11 @@ export function createLearnerTicketTool({ agentDir, z, runGh = runGitHubCli, run
       const ticket = normalizeTicket(params);
       assertTicketBodyWithinLimit(ticket);
       const repository = await resolveRepository(ticket, configuration, ctx?.cwd, runGit, signal);
+      if (ticket.existingIssueNumber !== undefined) {
+        const existing = await readSelectedOpenIssue(repository, ticket.existingIssueNumber, runGh, signal);
+        return ticketResult(`Existing learner ticket: ${existing.url}`, existing.url, false);
+      }
+
       const fingerprint = createFingerprint(repository, ticket);
       const existing = JSON.parse(await runGh(['issue', 'list', '--repo', repository, '--state', 'open', '--search', fingerprint, '--limit', '1', '--json', 'url'], signal));
       if (Array.isArray(existing) && typeof existing[0]?.url === 'string') return ticketResult(`Existing learner ticket: ${existing[0].url}`, existing[0].url, false);
@@ -66,6 +72,10 @@ function resolveAgentDir(agentDir, ctx) {
 }
 
 function normalizeTicket(params) {
+  if (params.existingIssueNumber !== undefined && (!Number.isInteger(params.existingIssueNumber) || params.existingIssueNumber <= 0)) {
+    throw new Error('Existing learner issue number must be a positive integer.');
+  }
+
   const target = clean(params.target, MAX_IDENTIFIER_LENGTH, 'target');
   if (!TARGETS.includes(target)) throw new Error('Learner ticket target is not eligible.');
   const repository = normalizeTargetRepository(params.repository, target);
@@ -92,6 +102,7 @@ function normalizeTicket(params) {
       failEvidence: cleanMultiline(params.failEvidence, MAX_MULTILINE_FIELD_LENGTH, 'failEvidence'),
       blockedEvidence: cleanMultiline(params.blockedEvidence, MAX_MULTILINE_FIELD_LENGTH, 'blockedEvidence'),
       nonGoals: cleanMultiline(params.nonGoals, MAX_MULTILINE_FIELD_LENGTH, 'nonGoals'),
+      existingIssueNumber: params.existingIssueNumber,
     };
   }
   if (proposalType) throw new Error('Verifier-check proposals require an eligible verifier target.');
@@ -102,7 +113,26 @@ function normalizeTicket(params) {
     title: clean(params.title, MAX_TITLE_LENGTH, 'title'),
     proposal: cleanMultiline(params.proposal, MAX_MULTILINE_FIELD_LENGTH, 'proposal'),
     evidence: cleanMultiline(params.evidence, MAX_MULTILINE_FIELD_LENGTH, 'evidence'),
+    existingIssueNumber: params.existingIssueNumber,
   };
+}
+
+async function readSelectedOpenIssue(repository, issueNumber, runGh, signal) {
+  const response = JSON.parse(await runGh([
+    'issue',
+    'view',
+    String(issueNumber),
+    '--repo',
+    repository,
+    '--json',
+    'url,state,number',
+  ], signal));
+  const expectedUrl = `https://github.com/${repository}/issues/${issueNumber}`;
+  if (response?.state !== 'OPEN' || response.number !== issueNumber || typeof response.url !== 'string' || response.url.toLowerCase() !== expectedUrl.toLowerCase()) {
+    throw new Error(`Selected learner issue #${issueNumber} is not an open issue in ${repository}.`);
+  }
+
+  return response;
 }
 
 function normalizeTargetRepository(value, target) {

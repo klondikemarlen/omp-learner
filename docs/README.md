@@ -4,6 +4,6 @@ This directory documents Learner's own behavior, implementation, and integration
 
 ## Authority and Publication
 
-- Current implementation behavior is defined by [`omp-plugin/learner/config.mjs`](../omp-plugin/learner/config.mjs) and [`omp-plugin/learner/ticket.mjs`](../omp-plugin/learner/ticket.mjs).
+- Current implementation behavior is defined by [`config.mjs`](../omp-plugin/learner/config.mjs), [`source.mjs`](../omp-plugin/learner/source.mjs), and [`ticket.mjs`](../omp-plugin/learner/ticket.mjs): advisor policy, authoritative native source inspection, and proposal routing/acknowledgment.
 - The repository's [`scripts/verify-learner.mjs`](../scripts/verify-learner.mjs) documents and exercises selected behavior; passing tests are evidence only for the covered cases.
 - This repository is the publication boundary for these project docs. If a documentation site is added, explicitly allowlist public inputs rather than publishing this tree implicitly.

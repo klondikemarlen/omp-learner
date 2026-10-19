@@ -27,6 +27,12 @@ const z = {
     optional() { return this; },
     describe() { return this; },
   }),
+  number: () => ({
+    int() { return this; },
+    positive() { return this; },
+    optional() { return this; },
+    describe() { return this; },
+  }),
 };
 
 try {
@@ -286,6 +292,68 @@ try {
     'Different accepted proposal suffixes after the former 2,000-character cut must use different markers.',
   );
   assert.equal(createdTickets, 3, 'Distinct accepted proposals should each create an issue.');
+
+  let selectedIssueUrl = 'https://github.com/klondikemarlen/marlens-skills-rules-and-tools/issues/42';
+  let selectedIssueState = 'OPEN';
+  let selectedIssueNumber = 42;
+  let selectionCreated = 0;
+  const semanticReuseTool = createLearnerTicketTool({
+    agentDir,
+    z,
+    runGh: async (args) => {
+      if (args[1] === 'view') {
+        return JSON.stringify({
+          url: selectedIssueUrl,
+          state: selectedIssueState,
+          number: selectedIssueNumber,
+        });
+      }
+
+      if (args[1] === 'list') return '[]';
+      selectionCreated += 1;
+      return `${duplicateUrl}\n`;
+    },
+  });
+  const differentlyWordedProposal = {
+    ...ticket('knowledge_base', 'Keep shared guidance reusable'),
+    proposal: 'Preserve shared rules so separate projects can apply them.',
+    existingIssueNumber: 42,
+  };
+  const semanticReuse = await semanticReuseTool.execute('ticket-semantic-reuse', differentlyWordedProposal);
+  assert.deepEqual(semanticReuse, {
+    content: [{ type: 'text', text: `Existing learner ticket: ${selectedIssueUrl}` }],
+    details: { created: false, url: selectedIssueUrl },
+  });
+  assert.equal(selectionCreated, 0, 'An explicitly selected equivalent issue must not create a second issue.');
+
+  await semanticReuseTool.execute('ticket-distinct', {
+    ...ticket('knowledge_base', 'Keep workflow automation disabled'),
+    proposal: 'Never activate a workflow without separate explicit approval.',
+  });
+  assert.equal(selectionCreated, 1, 'A distinct proposal without a selected issue must retain normal create behavior.');
+
+  selectedIssueState = 'CLOSED';
+  await assert.rejects(() => semanticReuseTool.execute('ticket-closed-selection', differentlyWordedProposal), /not an open issue/);
+  selectedIssueState = 'OPEN';
+  selectedIssueUrl = 'https://github.com/klondikemarlen/omp-verifier/issues/42';
+  await assert.rejects(() => semanticReuseTool.execute('ticket-wrong-repository', differentlyWordedProposal), /not an open issue/);
+  selectedIssueUrl = 'https://github.com/klondikemarlen/marlens-skills-rules-and-tools/issues/42';
+  selectedIssueNumber = 7;
+  await assert.rejects(() => semanticReuseTool.execute('ticket-mismatched-number', differentlyWordedProposal), /not an open issue/);
+  selectedIssueNumber = 42;
+  await assert.rejects(() => semanticReuseTool.execute('ticket-invalid-selection', {
+    ...differentlyWordedProposal,
+    existingIssueNumber: 0,
+  }), /positive integer/);
+  await assert.rejects(() => semanticReuseTool.execute('ticket-null-selection', {
+    ...differentlyWordedProposal,
+    existingIssueNumber: null,
+  }), /positive integer/);
+  await assert.rejects(() => semanticReuseTool.execute('ticket-fractional-selection', {
+    ...differentlyWordedProposal,
+    existingIssueNumber: 42.5,
+  }), /positive integer/);
+  assert.equal(selectionCreated, 1, 'Invalid selected issues must never fall through to issue creation.');
 
   const commands = new Map();
   const events = new Map();

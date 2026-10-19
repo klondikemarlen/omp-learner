@@ -18,6 +18,12 @@ const z = {
     optional() { return this; },
     describe() { return this; },
   }),
+  number: () => ({
+    int() { return this; },
+    positive() { return this; },
+    optional() { return this; },
+    describe() { return this; },
+  }),
 };
 const issueUrl = 'https://github.com/klondikemarlen/marlens-skills-rules-and-tools/issues/701';
 const ticket = {

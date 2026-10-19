@@ -1,6 +1,7 @@
 import { createLearnerTicketTool } from './learner/ticket.mjs';
 import { configurationPath, configureLearner, disableLearner, readConfiguration, resolveAgentDir } from './learner/config.mjs';
 import { createLearnerReportTool } from './learner/report.mjs';
+import { createLearnerSourceTool } from './learner/source.mjs';
 
 const COMMANDS = ['setup', 'off', 'status'];
 const NO_CHANGE_PATTERN = /\b(?:no changes?|unchanged|nothing to (?:change|do)|already up[- ]to[- ]date|did not change|stale anchor|anchor.*(?:mismatch|invalid|not found)|hash.*mismatch)\b/i;
@@ -12,6 +13,7 @@ export function registerLearnerPlugin(pi) {
   if (z) {
     pi.registerTool?.(createLearnerTicketTool({ agentDir: (ctx) => agentDir(pi, ctx), z }));
     pi.registerTool?.(createLearnerReportTool({ z }));
+    pi.registerTool?.(createLearnerSourceTool({ z }));
   }
 
   pi.registerCommand('learner', {

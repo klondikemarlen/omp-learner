@@ -23,7 +23,7 @@ writeFileSync(eventPath, '');
 writeFileSync(stderrPath, '');
 configureLearner(agentDir);
 writeFileSync(path.join(project, 'WATCHDOG.yml'), `advisors:\n  - name: default\n    enabled: false\n  - name: verifier\n    enabled: false\n  - name: learner\n    reviewMode: agent-end\n    reviewInterval: 1\n    tools: [read, grep, glob, learn, eval]\n    instructions: |\n      @${agentDir}/learner/WATCHDOG.md\n      This synthetic native QA uses only current-guidance.md, completed-work.md, and open-proposals.json as the complete relevant owner evidence. Do not use network or other sources. Never store memory or implement changes.\n`);
-writeFileSync(configPath, `advisor:\n  enabled: true\nautolearn:\n  enabled: false\ntools:\n  approvalMode: always-ask\n  approval:\n    read: allow\n    grep: allow\n    glob: allow\n    eval: allow\n    learner_file_ticket: allow\n    learner_report_operations: allow\n`);
+writeFileSync(configPath, `advisor:\n  enabled: true\nautolearn:\n  enabled: false\ntools:\n  approvalMode: always-ask\n  approval:\n    read: allow\n    grep: allow\n    glob: allow\n    eval: allow\n    learner_current_source: allow\n    learner_file_ticket: allow\n    learner_report_operations: allow\n`);
 writeFileSync(path.join(project, 'current-guidance.md'), '# Source README guidance\n\nSource README files document the layer, authoring boundaries, and contributor workflow. They do not contain feature summaries; product feature narrative belongs in product documentation.\n');
 writeFileSync(path.join(project, 'completed-work.md'), '# Completed work\n\nNo other relevant release records.\n');
 writeFileSync(path.join(project, 'open-proposals.json'), '[]\n');
@@ -144,8 +144,9 @@ try {
   assert.equal(coverageReports[1].outcome, 'not_covered', 'The new, genuinely distinct related correction must remain eligible for capture.');
   assert.match(reportCalls.find((record) => record.turn === 6).result.content[0].text, /not_covered guidance_coverage:/);
   for (const index of [1, 2, 3, 4]) {
-    assert.deepEqual(advisorCalls.filter((call) => call.turn === index + 1), [], `Turn ${index + 1} must not replay Learner actions or notes.`);
+    assert.deepEqual(advisorCalls.filter((call) => call.turn === index + 1 && call.name !== 'eval'), [], `Turn ${index + 1} may only inspect authoritative source, never replay coverage/actions/notes.`);
     assert.equal(reportCalls.filter((record) => record.turn === index + 1).length, 0, `Turn ${index + 1} must not invoke the Learner reporter.`);
+    assert.ok(operations.filter((record) => record.turn === index + 1).every((record) => record.tool === 'learner_current_source'), 'Ordinary turns may only inspect source, not perform capture or reporting.');
   }
   const githubActions = operations.filter((record) => record.isolatedGithubAction);
   assert.equal(githubActions.filter((record) => record.isolatedGithubAction[1] === 'create').length, 1, 'Only the fresh correction may create a proposal.');

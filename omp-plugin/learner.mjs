@@ -59,6 +59,7 @@ async function handleCommand(pi, args, ctx) {
       const configuration = configureLearner(currentAgentDir, { knowledgeBaseRepository: tokens[1] });
       const setupMessage = [
         'Learner advisor enabled. Identify and classify durable learning for shared skills, rules, and workflows; owner-local corrections stay with their project.',
+        'Recurring multi-step requests can reveal missing workflows or match existing skills; the primary agent owns their selection and execution.',
         'Learner is not a general project-knowledge store. Verification proposals integrate supplied checks; omp-verifier owns their discovery and execution.',
         'Shared guidance and reusable verifier proposals use your configured GitHub repository with native approval; local/project and related destinations keep their separate boundaries.',
         `Configured shared-guidance target: ${configuration.knowledgeBaseRepository}.`,
@@ -86,6 +87,8 @@ function statusText(currentAgentDir) {
     `advisor: ${configuration.enabled ? 'on' : 'off'}`,
     'core learning: uses OMP\'s learn tool when autolearn.enabled and a supported memory backend are configured',
     'purpose: identify and classify learning for shared skills, rules, workflows, and potential supplied verification',
+    'workflow discovery: explicit recurring effort or three matching real prompts in the active branch; existing skills are checked before proposals',
+    'workflow history: bounded to 12 prompts and 8 Learner reports; no automatic cross-session scan or workflow execution',
     'feedback handling: reusable learning becomes shared-guidance proposals; project-specific corrections stay with their owner; memory is supplementary',
     'knowledge ownership: project facts stay in their owning project; Learner docs and issues concern this plugin',
     'verification handoff: providers supply checks; Learner proposes integration; omp-verifier discovers and executes',

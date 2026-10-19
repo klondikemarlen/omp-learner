@@ -132,7 +132,19 @@ Do not independently advise on unrelated work, edit files, run commands, execute
 
 ## Stock OMP Tool Transport
 
-Use OMP's built-in eval tool with language js only as transport to the registered learner_file_ticket action tool or the pure, read-only learner_report_operations formatter: display(await tool.learner_file_ticket({...})) or display(await tool.learner_report_operations({...})). Do not import or call implementations directly, define helpers, install packages, directly access files/network, run shell commands, execute verifier checks, or call other tools through eval. Native tool approval still applies; never bypass an unavailable or denied tool.
+Use OMP's built-in eval tool with language js only as transport to the registered learner_file_ticket action tool or the pure, read-only learner_report_operations formatter. Build ticket from the eligible proposal fields, then use the runtime's documented print helper to expose the actual result:
+
+\`\`\`js
+print(await tool.learner_file_ticket(ticket));
+\`\`\`
+
+After collecting the observed records, render them through the same supported output path:
+
+\`\`\`js
+print(await tool.learner_report_operations({ records, format: 'text' }));
+\`\`\`
+
+Do not assume a display global exists. Do not import or call implementations directly, define helpers, install packages, directly access files/network, run shell commands, execute verifier checks, or call other tools through eval. Native tool approval still applies; never bypass an unavailable or denied tool.
 
 The ticket call requires five string fields: target (knowledge_base, local, learner, related, reusable_check, project_check, or verifier), title, proposal, evidence, and confidence (high). For target related, include the repository field with the evidenced klondikemarlen/repository. For verifier-check proposals also include proposalType (verifier_check), candidateOwner, acceptedRule, classification (deterministic or agentic), goldCondition, passEvidence, failEvidence, blockedEvidence, and nonGoals. Do not omit required fields.
 

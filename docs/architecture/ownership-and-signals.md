@@ -30,8 +30,10 @@ Providers and projects own check implementations; `omp-verifier` discovers and e
 Stock OMP's named-advisor tool pool contains built-ins, not registered extension tools. Learner grants the native `eval` tool and uses its JavaScript session-tool bridge:
 
 ```js
-display(await tool.learner_file_ticket({ target, title, proposal, evidence, confidence: 'high' }));
+print(await tool.learner_file_ticket({ target, title, proposal, evidence, confidence: 'high' }));
 ```
+
+The eval runtime documents `print` for exposing results; Learner does not assume a `display` global. Generated executable examples are exercised with the supported output contract, and fresh native QA must observe actual ticket/reporter acknowledgments.
 
 The ticket tool is enabled by default rather than hidden/inactive, so stock dispatch can resolve it. The bridge invokes the same registered tool and native approval wrapper; it does not import the implementation or duplicate the action pipeline. The advisor still selects the eligible action and executes it. The returned `text`, `details.created`, `details.url`, and `hasError` when present are observed operation evidence; a thrown error or error result is not success. The read-only `learner_report_operations` tool uses the same supported bridge for formatting only.
 
@@ -55,7 +57,7 @@ Each result contains:
 [`report.mjs`](../../omp-plugin/learner/report.mjs) supplies the read-only `learner_report_operations` tool:
 
 ```js
-display(await tool.learner_report_operations({ records, format: 'text' }));
+print(await tool.learner_report_operations({ records, format: 'text' }));
 ```
 
 Both `text` and `json` represent the same four fields; the returned `details.records` retains the structured array for machine consumers. Text renders `outcome operation: subject`, followed by indented evidence lines, with a blank line between operations. JSON serializes the records without changing their evidence. Multiline acknowledgments/errors remain multiline; exact URLs are preserved. Empty records render empty text (or `[]` for JSON), but the advisor must not call the reporter or deliver a note without a current eligible signal and an observed coverage/action record.

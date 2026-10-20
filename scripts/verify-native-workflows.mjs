@@ -15,7 +15,6 @@ const stderrPath = path.join(root, 'stderr.txt');
 const failureEvidence = path.join(os.tmpdir(), `omp-learner-native-workflows-${process.pid}.log`);
 const { configureLearner } = await import(pathToFileURL(path.join(source, 'omp-plugin/learner/config.mjs')));
 const configPath = path.join(root, 'qa.yml');
-const expectedBaseline = process.env.QA_EXPECT_MISSING_WORKFLOW === '1';
 const scenarios = [
   {
     name: 'one-off',
@@ -35,6 +34,12 @@ const scenarios = [
     name: 'recurring-covered',
     prompts: [
       'I keep spending time turning each release’s changes into a useful update. This release needs the same kind of concise summary of merged work, user impact, and remaining risks.',
+    ],
+  },
+  {
+    name: 'completed-work-coaching',
+    prompts: [
+      'The release update is finished. I keep spending effort manually coordinating these updates. For next time, how could I have used existing OMP workflows to achieve the same result with less typing? I only want coaching, not a new skill or guidance change.',
     ],
   },
 ];
@@ -97,9 +102,7 @@ export default function extension(pi) {
 `);
 
 const skillGuide = '# Available shared skills\n\n## Test fixture setup\n\nInvocation: `/test-factory-traits-and-service-shape`. Use this skill to build persisted relationship fixtures for TypeScript service tests. It does not describe release communication.\n';
-const ownerGuidance = '# Current shared guidance\n\n' + (expectedBaseline
-  ? 'This baseline intentionally has no relevant shared workflow guidance.\n'
-  : '## Available workflow\n\n' + skillGuide + '\n## Workflow gaps\n\nThe reusable workflow for preparing concise release updates from merged work, user impact, and unresolved risks is not documented here.\n');
+const ownerGuidance = '# Current shared guidance\n\n## Available workflow\n\n' + skillGuide + '\n## Workflow gaps\n\nThe reusable workflow for preparing concise release updates from merged work, user impact, and unresolved risks is not documented here.\n';
 const coveredGuidance = '# Current shared guidance\n\n## Available shared skills\n\n### Release notes\n\nInvocation: `/release-notes`. Use this skill to prepare release notes from merged work, explain user impact, and call out unresolved risks. It provides the established release-note workflow.\n';
 const evidenceFiles = ['current-guidance.md', 'completed-work.md', 'open-proposals.json'];
 
@@ -108,7 +111,7 @@ function prepareScenario(scenario) {
   const sessionDir = path.join(project, 'sessions');
   mkdirSync(project, { recursive: true });
   writeFileSync(path.join(project, 'WATCHDOG.yml'), `advisors:\n  - name: default\n    enabled: false\n  - name: verifier\n    enabled: false\n  - name: learner\n    reviewMode: agent-end\n    reviewInterval: 1\n    tools: [read, grep, glob, learn, eval]\n    instructions: |\n      @${agentDir}/learner/WATCHDOG.md\n      Treat ${evidenceFiles.join(', ')} as the complete owner evidence. Do not use network or other sources. Never store memory or implement changes.\n`);
-  writeFileSync(path.join(project, 'current-guidance.md'), scenario.name === 'recurring-covered' ? coveredGuidance : ownerGuidance);
+  writeFileSync(path.join(project, 'current-guidance.md'), scenario.name === 'recurring-missing' || scenario.name === 'one-off' ? ownerGuidance : coveredGuidance);
   writeFileSync(path.join(project, 'completed-work.md'), '# Completed work\n\nNo other relevant release records.\n');
   writeFileSync(path.join(project, 'open-proposals.json'), '[]\n');
   return { project, sessionDir };
@@ -205,6 +208,19 @@ function coverageFor(evidence) {
 }
 
 try {
+  const covered = await runScenario(scenarios[2]);
+  assert.deepEqual(covered.deliveredNotes, [], 'An ordinary recurring request covered by an existing workflow must not deliver a Learner match or coaching note.');
+  assert.equal(reportsFor(covered).length, 0, 'An existing-workflow match must not produce a Learner report.');
+  assert.equal(covered.operations.filter((record) => record.tool === 'learner_file_ticket').length, 0, 'An existing equivalent skill must not produce a ticket.');
+  assert.equal(covered.advisorCalls.filter((call) => call.name === 'learn').length, 0, 'An existing-workflow match must not create a memory record.');
+  assert.equal(covered.advisorCalls.filter((call) => call.name === 'advise').length, 0, 'Existing-workflow coaching belongs to Trainer, not Learner.');
+
+  const coaching = await runScenario(scenarios[3]);
+  assert.deepEqual(coaching.deliveredNotes, [], 'A completed-work coaching request must not deliver a Learner note.');
+  assert.equal(reportsFor(coaching).length, 0, 'A coaching-only request must not produce a Learner report.');
+  assert.equal(coaching.operations.filter((record) => record.tool === 'learner_file_ticket').length, 0, 'A coaching-only request must not create a guidance ticket.');
+  assert.ok(coaching.advisorCalls.every((call) => call.name === 'eval'), 'A coaching-only request must stop after source inspection without guidance lookup or memory capture.');
+
   const oneOff = await runScenario(scenarios[0]);
   assert.equal(reportsFor(oneOff).length, 0, 'A one-off ordinary request must not produce a Learner report.');
   assert.equal(oneOff.operations.filter((record) => record.tool === 'learner_file_ticket').length, 0);
@@ -215,50 +231,28 @@ try {
   const recurringReports = reportsFor(recurring);
   const recurringCoverage = coverageFor(recurring);
   const recurringActions = recurring.operations.filter((record) => record.isolatedGithubAction);
-  if (expectedBaseline) {
-    assert.equal(recurringReports.length, 0, 'Correction-only baseline should not detect recurring-workflow learning.');
-    assert.equal(recurringActions.length, 0, 'Correction-only baseline should not file a workflow proposal.');
-  } else {
-    assert.equal(recurringCoverage.length, 1, `Expected one missing-workflow coverage report, found ${recurringCoverage.length}.`);
-    assert.equal(recurringCoverage[0].outcome, 'not_covered');
-    assert.match(recurringCoverage[0].evidence, /current-guidance\.md/);
-    assert.equal(recurringCoverage[0].turn, 3, 'Recurrence should be established by three distinct real user prompts.');
-    const ticket = recurring.operations.find((record) => record.tool === 'learner_file_ticket');
-    assert.ok(ticket, 'Missing recurring workflow should create one approved proposal through the registered ticket tool.');
-    assert.equal(ticket.result.details.created, true);
-    assert.equal(ticket.result.details.url, 'https://github.com/klondikemarlen/marlens-skills-rules-and-tools/issues/999999');
-    assert.equal(recurringActions.filter((record) => record.isolatedGithubAction[1] === 'create').length, 1);
-    const ticketText = JSON.stringify(ticket.params);
-    assert.match(ticketText, /release/i, 'Proposal should identify the intended release-update workflow.');
-    assert.match(ticketText, /merged/i, 'Proposal should identify relevant workflow inputs.');
-    assert.match(ticketText, /impact|outcome/i, 'Proposal should identify the intended result.');
-    assert.match(ticketText, /approval|review/i, 'Proposal should preserve human approval boundaries.');
-    assert.match(reportsFor(recurring)[0].result.content[0].text, /not_covered guidance_coverage:/);
-    assert.equal(recurring.advisorCalls.filter((call) => call.name === 'advise').length, 1, 'Missing-workflow result should reach the native Learner reporter.');
-    assert.equal(recurring.advisorCalls.find((call) => call.name === 'advise').arguments.note, reportsFor(recurring)[0].result.content[0].text);
-    assert.deepEqual(recurring.deliveredNotes, [recurringReports[0].result.content[0].text], 'The primary session must receive exactly the observed missing-workflow report.');
-    assert.equal(reportsFor(recurring).filter((record) => record.turn === 4).length, 0, 'Repeating a handled pattern must not produce another Learner report.');
-    assert.equal(recurring.operations.filter((record) => record.turn === 4 && record.tool === 'learner_file_ticket').length, 0, 'A handled pattern must not produce a duplicate proposal.');
-    assert.equal(reportsFor(recurring).filter((record) => record.turn === 5).length, 0, 'An unrelated ordinary current request must remain silent despite historical repetition.');
-    assert.equal(recurring.operations.filter((record) => record.turn === 5 && record.tool === 'learner_file_ticket').length, 0);
-  }
-
-  const covered = await runScenario(scenarios[2]);
-  const coveredReports = reportsFor(covered);
-  const coveredCoverage = coverageFor(covered);
-  if (expectedBaseline) {
-    assert.equal(coveredReports.length, 0, 'Baseline mode expects workflow guidance behavior to be absent.');
-  } else {
-    assert.equal(coveredCoverage.length, 1, `Expected one covered report for the explicit recurring request; found ${coveredCoverage.length}.`);
-    assert.equal(coveredCoverage[0].outcome, 'covered');
-    assert.match(coveredCoverage[0].evidence, /current-guidance\.md/);
-    assert.match(coveredCoverage[0].evidence, /release-notes|Release notes|\/release-notes/);
-    assert.equal(covered.operations.filter((record) => record.tool === 'learner_file_ticket').length, 0, 'An existing equivalent skill must not produce a ticket.');
-    assert.match(coveredReports[0].result.content[0].text, /covered guidance_coverage:/);
-    assert.equal(covered.advisorCalls.filter((call) => call.name === 'advise').length, 1, 'Covered result should reach the native Learner reporter.');
-    assert.equal(covered.advisorCalls.find((call) => call.name === 'advise').arguments.note, coveredReports[0].result.content[0].text);
-    assert.deepEqual(covered.deliveredNotes, [coveredReports[0].result.content[0].text], 'The primary session must receive exactly the observed existing-skill report.');
-  }
+  assert.equal(recurringCoverage.length, 1, `Expected one missing-workflow coverage report, found ${recurringCoverage.length}.`);
+  assert.equal(recurringCoverage[0].outcome, 'not_covered');
+  assert.match(recurringCoverage[0].evidence, /current-guidance\.md/);
+  assert.equal(recurringCoverage[0].turn, 3, 'Recurrence should be established by three distinct real user prompts.');
+  const ticket = recurring.operations.find((record) => record.tool === 'learner_file_ticket');
+  assert.ok(ticket, 'Missing recurring workflow should create one approved proposal through the registered ticket tool.');
+  assert.equal(ticket.result.details.created, true);
+  assert.equal(ticket.result.details.url, 'https://github.com/klondikemarlen/marlens-skills-rules-and-tools/issues/999999');
+  assert.equal(recurringActions.filter((record) => record.isolatedGithubAction[1] === 'create').length, 1);
+  const ticketText = JSON.stringify(ticket.params);
+  assert.match(ticketText, /release/i, 'Proposal should identify the intended release-update workflow.');
+  assert.match(ticketText, /merged/i, 'Proposal should identify relevant workflow inputs.');
+  assert.match(ticketText, /impact|outcome/i, 'Proposal should identify the intended result.');
+  assert.match(ticketText, /approval|review/i, 'Proposal should preserve human approval boundaries.');
+  assert.match(reportsFor(recurring)[0].result.content[0].text, /not_covered guidance_coverage:/);
+  assert.equal(recurring.advisorCalls.filter((call) => call.name === 'advise').length, 1, 'Missing-workflow result should reach the native Learner reporter.');
+  assert.equal(recurring.advisorCalls.find((call) => call.name === 'advise').arguments.note, reportsFor(recurring)[0].result.content[0].text);
+  assert.deepEqual(recurring.deliveredNotes, [recurringReports[0].result.content[0].text], 'The primary session must receive exactly the observed missing-workflow report.');
+  assert.equal(reportsFor(recurring).filter((record) => record.turn === 4).length, 0, 'Repeating a handled pattern must not produce another Learner report.');
+  assert.equal(recurring.operations.filter((record) => record.turn === 4 && record.tool === 'learner_file_ticket').length, 0, 'A handled pattern must not produce a duplicate proposal.');
+  assert.equal(reportsFor(recurring).filter((record) => record.turn === 5).length, 0, 'An unrelated ordinary current request must remain silent despite historical repetition.');
+  assert.equal(recurring.operations.filter((record) => record.turn === 5 && record.tool === 'learner_file_ticket').length, 0);
 
   for (const scenario of scenarioEvents) {
     assert.ok(scenario.transcriptPaths.length > 0, `${scenario.name} must retain a named Learner transcript.`);
@@ -293,6 +287,4 @@ try {
   if (passed) rmSync(root, { recursive: true, force: true });
 }
 
-console.log(expectedBaseline
-  ? 'Native workflow baseline behaved as expected: recurring workflow capture is absent.'
-  : 'Native workflow QA passed: one-off silence, recurring capture, handled replay silence, existing coverage, and unrelated-prompt silence.');
+console.log('Native workflow QA passed: existing-workflow and coaching-only silence, recurring gap capture, handled replay silence, and unrelated-prompt silence.');

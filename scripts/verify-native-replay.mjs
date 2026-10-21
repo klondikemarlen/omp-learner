@@ -128,39 +128,55 @@ async function runTurn(prompt, number) {
 
 try {
   for (let index = 0; index < prompts.length; index += 1) await runTurn(prompts[index], index + 1);
+
   const mainSessions = readdirSync(sessionDir).filter((name) => name.endsWith('.jsonl'));
   assert.equal(mainSessions.length, 1, 'All turns must retain the original correction in one continued conversation.');
+
+  const primaryEntries = readFileSync(path.join(sessionDir, mainSessions[0]), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line));
+  const deliveredNotes = [];
+  for (const entry of primaryEntries) {
+    if (entry.type !== 'custom_message' || entry.customType !== 'advisor') continue;
+
+    for (const note of entry.details?.notes || []) {
+      if (note.advisor === 'learner') deliveredNotes.push(note.note);
+    }
+  }
+
   const operations = readFileSync(operationsPath, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line));
   const reportCalls = operations.filter((record) => record.tool === 'learner_report_operations');
   const coverageReports = reportCalls.flatMap((record) => (record.params?.records ?? [])
     .filter((entry) => entry.operation === 'guidance_coverage')
     .map((entry) => ({ ...entry, turn: record.turn })));
-  assert.equal(coverageReports.length, 2, `Expected initial and new-correction coverage reports; observed ${coverageReports.length}.`);
-  assert.equal(coverageReports[0].turn, 1);
-  assert.equal(coverageReports[0].outcome, 'covered', 'Initial source correction must have an evidence-backed covered result.');
+  assert.equal(coverageReports.length, 1, `Only the genuinely missing correction may report coverage; observed ${coverageReports.length}.`);
+  assert.equal(coverageReports[0].turn, 6);
+  assert.equal(coverageReports[0].outcome, 'not_covered', 'The new, genuinely distinct related correction must remain eligible for capture.');
   assert.match(coverageReports[0].evidence, /current-guidance\.md/);
-  assert.match(reportCalls.find((record) => record.turn === 1).result.content[0].text, /covered guidance_coverage:/);
-  assert.equal(coverageReports[1].turn, 6);
-  assert.equal(coverageReports[1].outcome, 'not_covered', 'The new, genuinely distinct related correction must remain eligible for capture.');
   assert.match(reportCalls.find((record) => record.turn === 6).result.content[0].text, /not_covered guidance_coverage:/);
+
+  assert.equal(reportCalls.filter((record) => record.turn === 1).length, 0, 'An already-covered human correction must not invoke the formatter.');
+  assert.deepEqual(advisorCalls.filter((call) => call.turn === 1 && ['advise', 'learn'].includes(call.name)), [], 'An already-covered correction must not deliver a no-action note or store redundant memory.');
+
   for (const index of [1, 2, 3, 4]) {
     assert.deepEqual(advisorCalls.filter((call) => call.turn === index + 1 && call.name !== 'eval'), [], `Turn ${index + 1} may only inspect authoritative source, never replay coverage/actions/notes.`);
     assert.equal(reportCalls.filter((record) => record.turn === index + 1).length, 0, `Turn ${index + 1} must not invoke the Learner reporter.`);
     assert.ok(operations.filter((record) => record.turn === index + 1).every((record) => record.tool === 'learner_current_source'), 'Ordinary turns may only inspect source, not perform capture or reporting.');
   }
+
   const githubActions = operations.filter((record) => record.isolatedGithubAction);
   assert.equal(githubActions.filter((record) => record.isolatedGithubAction[1] === 'create').length, 1, 'Only the fresh correction may create a proposal.');
   assert.ok(githubActions.every((record) => record.turn === 6), 'No earlier replay may attempt a ticket action.');
+
   const newTicket = operations.find((record) => record.tool === 'learner_file_ticket' && record.turn === 6);
   assert.equal(newTicket.result.details.created, true, 'New correction should produce the actual isolated ticket action result.');
   assert.equal(newTicket.result.details.url, 'https://github.com/klondikemarlen/marlens-skills-rules-and-tools/issues/999999');
-  for (const turn of [1, 6]) {
-    const advice = advisorCalls.filter((call) => call.turn === turn && call.name === 'advise');
-    const report = reportCalls.find((record) => record.turn === turn);
-    assert.equal(advice.length, 1);
-    assert.equal(advice[0].arguments.note, report.result.content[0].text);
-    assert.ok(advice[0].arguments.severity === undefined || advice[0].arguments.severity === 'nit');
-  }
+
+  const advice = advisorCalls.filter((call) => call.turn === 6 && call.name === 'advise');
+  const report = reportCalls.find((record) => record.turn === 6);
+  assert.equal(advice.length, 1);
+  assert.equal(advice[0].arguments.note, report.result.content[0].text);
+  assert.ok(advice[0].arguments.severity === undefined || advice[0].arguments.severity === 'nit');
+  assert.deepEqual(deliveredNotes, [report.result.content[0].text], 'Only the genuinely missing correction may deliver an improvement-ticket report to the primary session.');
+
   passed = true;
 } catch (error) {
   const evidence = [readFileSync(eventPath, 'utf8'), readFileSync(stderrPath, 'utf8'), readFileSync(operationsPath, 'utf8')].join('\n===== STDERR / OPERATIONS =====\n');

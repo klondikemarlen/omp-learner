@@ -59,7 +59,7 @@ async function handleCommand(pi, args, ctx) {
       const configuration = configureLearner(currentAgentDir, { knowledgeBaseRepository: tokens[1] });
       const setupMessage = [
         'Learner advisor enabled. Identify and classify durable learning for shared skills, rules, and workflows; owner-local corrections stay with their project.',
-        'Recurring multi-step requests can reveal maintained-guidance gaps; fully covered ordinary tasks stay silent. The primary agent owns workflow selection and execution.',
+        'Recurring multi-step requests can reveal maintained-guidance gaps; already-covered corrections and tasks stay silent. The primary agent owns workflow selection and execution.',
         'Post-completion user coaching belongs to the separate omp-trainer project; Learner does not enable or run it.',
         'Learner is not a general project-knowledge store. Verification proposals integrate supplied checks; omp-verifier owns their discovery and execution.',
         'Shared guidance and reusable verifier proposals use your configured GitHub repository with native approval; local/project and related destinations keep their separate boundaries.',
@@ -92,6 +92,7 @@ function statusText(currentAgentDir) {
     'workflow history: bounded to 12 prompts and 8 Learner reports; no automatic cross-session scan or workflow execution',
     'coaching boundary: post-completion user-effort tips belong to the separate omp-trainer project; no Trainer runtime is enabled by Learner',
     'feedback handling: reusable learning becomes shared-guidance proposals; project-specific corrections stay with their owner; memory is supplementary',
+    'reporting: improvement-ticket outcomes only; already-covered corrections and tasks stay silent',
     'knowledge ownership: project facts stay in their owning project; Learner docs and issues concern this plugin',
     'verification handoff: providers supply checks; Learner proposes integration; omp-verifier discovers and executes',
     'ticket boundary: configured GitHub knowledge base for shared guidance/checks; active origin for project work; related targets retain their namespace restriction; native approval required',

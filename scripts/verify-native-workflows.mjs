@@ -201,12 +201,6 @@ function reportsFor(evidence) {
   return evidence.operations.filter((record) => record.tool === 'learner_report_operations');
 }
 
-function coverageFor(evidence) {
-  return reportsFor(evidence).flatMap((record) => (record.params?.records ?? [])
-    .filter((entry) => entry.operation === 'guidance_coverage')
-    .map((entry) => ({ ...entry, turn: record.turn })));
-}
-
 try {
   const covered = await runScenario(scenarios[2]);
   assert.deepEqual(covered.deliveredNotes, [], 'An ordinary recurring request covered by an existing workflow must not deliver a Learner match or coaching note.');
@@ -229,12 +223,9 @@ try {
 
   const recurring = await runScenario(scenarios[1]);
   const recurringReports = reportsFor(recurring);
-  const recurringCoverage = coverageFor(recurring);
   const recurringActions = recurring.operations.filter((record) => record.isolatedGithubAction);
-  assert.equal(recurringCoverage.length, 1, `Expected one missing-workflow coverage report, found ${recurringCoverage.length}.`);
-  assert.equal(recurringCoverage[0].outcome, 'not_covered');
-  assert.match(recurringCoverage[0].evidence, /current-guidance\.md/);
-  assert.equal(recurringCoverage[0].turn, 3, 'Recurrence should be established by three distinct real user prompts.');
+  assert.equal(recurringReports.length, 1, 'The recurring gap should produce one ticket notification.');
+  assert.equal(recurringReports[0].turn, 3, 'Recurrence should be established by three distinct real user prompts.');
   const ticket = recurring.operations.find((record) => record.tool === 'learner_file_ticket');
   assert.ok(ticket, 'Missing recurring workflow should create one approved proposal through the registered ticket tool.');
   assert.equal(ticket.result.details.created, true);

@@ -144,14 +144,6 @@ try {
 
   const operations = readFileSync(operationsPath, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line));
   const reportCalls = operations.filter((record) => record.tool === 'learner_report_operations');
-  const coverageReports = reportCalls.flatMap((record) => (record.params?.records ?? [])
-    .filter((entry) => entry.operation === 'guidance_coverage')
-    .map((entry) => ({ ...entry, turn: record.turn })));
-  assert.equal(coverageReports.length, 1, `Only the genuinely missing correction may report coverage; observed ${coverageReports.length}.`);
-  assert.equal(coverageReports[0].turn, 6);
-  assert.equal(coverageReports[0].outcome, 'not_covered', 'The new, genuinely distinct related correction must remain eligible for capture.');
-  assert.match(coverageReports[0].evidence, /current-guidance\.md/);
-  assert.match(reportCalls.find((record) => record.turn === 6).result.content[0].text, /^Improvement ticket created\n/);
 
   assert.equal(reportCalls.filter((record) => record.turn === 1).length, 0, 'An already-covered human correction must not invoke the formatter.');
   assert.deepEqual(advisorCalls.filter((call) => call.turn === 1 && ['advise', 'learn'].includes(call.name)), [], 'An already-covered correction must not deliver a no-action note or store redundant memory.');

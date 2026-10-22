@@ -14,7 +14,16 @@ const MAX_CLASSIFICATION_LENGTH = 20;
 const MAX_IDENTIFIER_LENGTH = 30;
 const MAX_ISSUE_BODY_LENGTH = 65_536;
 const FINGERPRINT_LENGTH = 20;
-const TARGETS = ['knowledge_base', 'local', 'learner', 'reusable_check', 'project_check', 'verifier', 'related'];
+const TARGET_LABELS = {
+  knowledge_base: 'Shared skills, rules, and workflows',
+  local: 'Current project',
+  learner: 'OMP Learner plugin',
+  reusable_check: 'Shared verification checks',
+  project_check: 'Current project verification checks',
+  verifier: 'OMP Verifier runtime',
+  related: 'Related project',
+};
+const TARGETS = Object.keys(TARGET_LABELS);
 const VERIFIER_REPOSITORY = 'klondikemarlen/omp-verifier';
 const VERIFIER_TARGETS = ['reusable_check', 'project_check', 'verifier'];
 const VERIFIER_PROPOSAL = 'verifier_check';
@@ -30,8 +39,8 @@ export function createLearnerTicketTool({ agentDir, z, runGh = runGitHubCli, run
       target: z.enum(TARGETS),
       title: z.string().max(MAX_TITLE_LENGTH),
       repository: z.string().max(MAX_REPOSITORY_LENGTH).optional(),
-      proposal: z.string().max(MAX_MULTILINE_FIELD_LENGTH),
-      evidence: z.string().max(MAX_MULTILINE_FIELD_LENGTH),
+      proposal: z.string().max(MAX_MULTILINE_FIELD_LENGTH).describe('Reader-facing Markdown with ### Problem, ### Proposed change, and ### Done when. Explain the user impact in short sentences; use bullets for changes and observable completion criteria. Add ### Scope limits only for relevant exclusions or approval boundaries.'),
+      evidence: z.string().max(MAX_MULTILINE_FIELD_LENGTH).describe('Short labeled Markdown bullets: Source (brief user quote and source ID), Observed behavior, Existing guidance, and Related proposals, as applicable. Link only inspected references with known URLs; retain bounded-search limits. Explain findings instead of dumping lookup commands or internal classification prose.'),
       confidence: z.string().max(MAX_CONFIDENCE_LENGTH).describe('Must be "high".'),
       proposalType: z.string().max(MAX_IDENTIFIER_LENGTH).optional().describe('When present, must be "verifier_check".'),
       candidateOwner: z.string().max(MAX_CANDIDATE_OWNER_LENGTH).optional(),
@@ -253,14 +262,15 @@ function createFingerprint(repository, ticket) {
 }
 
 function ticketBody(ticket, fingerprint) {
+  const filingDetails = `## Filing details
+
+- **Destination:** ${TARGET_LABELS[ticket.target]}
+- **Confidence:** ${ticket.confidence}`;
+
   if (ticket.proposalType === VERIFIER_PROPOSAL) {
     return `## Verifier-check proposal
 
 ${ticket.proposal}
-
-- **Route:** ${ticket.target}
-- **Candidate owner:** ${ticket.candidateOwner}
-- **Classification:** ${ticket.classification}
 
 ## Accepted shared/project rule
 
@@ -290,11 +300,23 @@ ${ticket.blockedEvidence}
 
 ${ticket.nonGoals}
 
-- **Confidence:** ${ticket.confidence}
+${filingDetails}
+- **Candidate owner:** ${ticket.candidateOwner}
+- **Classification:** ${ticket.classification}
 
 <!-- omp-learner-ticket:${fingerprint} -->`;
   }
-  return `## Learner improvement\n\n${ticket.proposal}\n\n- **Route:** ${ticket.target}\n- **Confidence:** ${ticket.confidence}\n\n## Evidence\n\n${ticket.evidence}\n\n<!-- omp-learner-ticket:${fingerprint} -->`;
+  return `## Proposed improvement
+
+${ticket.proposal}
+
+## Evidence
+
+${ticket.evidence}
+
+${filingDetails}
+
+<!-- omp-learner-ticket:${fingerprint} -->`;
 }
 
 function ticketResult(text, url, created) {

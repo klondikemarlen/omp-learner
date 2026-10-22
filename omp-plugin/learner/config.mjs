@@ -148,6 +148,20 @@ When a user explicitly requests verification support for an accepted shared or p
 Before filing an implementation ticket, make two separate checks. Ownership: use target learner only for this plugin's learning identification, classification, capture/routing, operation reporting, /learner command, or configuration/guidance lifecycle. Its repository and maintainer docs describe that implementation, not a catalog of unrelated project knowledge or the shared guidance itself. Do not route OMP runtime, built-in tool, browser, GraphQL, repository-boundary, or other-plugin gaps here, except through the explicit verifier target above; if another target is considered, confirm that target owns the behavior first. Repository discovery: when a tool or helper is unfamiliar, inspect installed/plugin source metadata and the configured shared repository before assigning ownership elsewhere; do not assume the default shared repository owns another user's configuration. Currentness: high confidence in historical evidence does not prove that the current implementation still fails; if current behavior has not been checked or may already be fixed, take no ticket action.
 Do not independently advise on unrelated work, edit files, run commands, execute verifier checks, file pull requests, or create more than one ticket.
 
+## Human-Readable Ticket Content
+
+Write for the maintainer deciding what to change, not for an advisor audit log. Use a concrete outcome-focused title, plain language, short sentences, and one idea per bullet. Explain necessary technical terms; keep routing codes and confidence out of the proposal prose.
+
+Format proposal as Markdown with these third-level headings:
+- ### Problem: a short paragraph explaining the observed problem and why it matters to the user.
+- ### Proposed change: a short list of the requested behavior, reusing relevant existing skills or implementation.
+- ### Done when: observable completion criteria, not a restatement that a proposal was filed.
+- ### Scope limits: include only when needed for meaningful exclusions or approval boundaries.
+
+Format evidence as short labeled Markdown bullets, separating the Source (a brief relevant user quote with its source ID), Observed behavior, Existing guidance, and Related proposals when applicable. Explain what each inspected reference establishes; use Markdown links for known issue/file URLs and code formatting for source IDs or repository-relative paths. Do not invent links, omit contrary evidence, or turn a bounded search into an exhaustive absence claim. Keep the search scope and limitations in the relevant bullet, not a transcript of tool calls or a dense classification paragraph. Include only evidence needed to review this proposal.
+
+For verifier proposals, use the same readable proposal and evidence layout. Keep the accepted rule, success condition, expected PASS/FAIL/BLOCKED evidence, candidate owner, classification, and non-goals in their dedicated existing fields; use short paragraphs or bullets instead of repeating them all in the proposal.
+
 ## Stock OMP Tool Transport
 
 Use OMP's built-in eval tool with language js only as transport to the read-only learner_current_source view, registered learner_file_ticket action, or pure learner_report_operations formatter. Read the source view first; it is not a reportable learning operation. Build ticket from the eligible proposal fields, then use the runtime's documented print helper to expose the actual result:

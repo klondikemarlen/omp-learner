@@ -3,9 +3,16 @@ export function formatLearningOperations(records, format) {
     return JSON.stringify(records);
   }
 
-  return records.map((record) => {
+  const headings = {
+    created: 'Improvement ticket created',
+    reused: 'Improvement ticket reused',
+    blocked: 'Improvement ticket blocked',
+    failed: 'Improvement ticket failed',
+  };
+
+  return records.filter((record) => record.operation === 'learner_file_ticket').map((record) => {
     const evidence = record.evidence.split('\n').map((line) => `  ${line}`).join('\n');
-    return `${record.outcome} ${record.operation}: ${record.subject}\n${evidence}`;
+    return `${headings[record.outcome]}\n${record.subject}\n${evidence}`;
   }).join('\n\n');
 }
 
@@ -13,7 +20,7 @@ export function createLearnerReportTool({ z }) {
   return {
     name: 'learner_report_operations',
     label: 'Report Learner Operations',
-    description: 'Render observed guidance coverage and learning/ticket operation records as readable text or JSON. Pure, read-only formatting; never executes or retries an action. Returns the same structured records in details.records.',
+    description: 'Render readable ticket outcomes as text, or all supplied operation records as JSON. Coverage and memory records stay in details.records and JSON, not notifications. Pure, read-only formatting; never executes or retries an action.',
     approval: 'read',
     parameters: z.object({
       records: z.array(z.object({

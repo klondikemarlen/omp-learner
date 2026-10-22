@@ -54,7 +54,11 @@ Post-completion user coaching—“you could have done this with less work by ..
 
 History is intentionally bounded: the latest 12 real prompts and 8 Learner reports in the active branch, newest first, with each history text capped at 2,000 characters and explicit truncation flags. The latest source and last report remain available in full. There is no separate prompt archive or automatic cross-session discovery; a current user report of cross-session recurrence is labeled user-reported evidence. See the [recurring-workflow contract](docs/architecture/ownership-and-signals.md#recurring-workflow-opportunities) for source fields and proposal boundaries.
 
-### Ticket Content Limits
+### Ticket Content and Limits
+
+New filings lead with the user problem, proposed change, and observable completion criteria. Generated advisor guidance and ticket-field descriptions request short Markdown sections and one idea per bullet, with scope limits when relevant. Evidence separates the source correction, observed behavior, existing guidance, and related proposals into labeled bullets; inspected references stay linked when their URLs are known, and bounded-search limitations remain explicit. Filing details come last, with a readable destination rather than an internal routing code. Verifier proposals retain their dedicated rule, success-condition, PASS/FAIL/BLOCKED, and non-goal sections.
+
+The advisor authors this content; the ticket tool preserves it rather than guessing how to summarize or restructure arbitrary prose. Existing tickets are not rewritten, and explicitly reused proposals retain their original deduplication inputs.
 
 Ticket filing preserves Markdown headings, paragraphs, lists, and code fences in proposals, evidence, and verifier-detail fields while redacting secrets. Each multiline field accepts up to 6,000 characters; titles accept 120, and candidate owners and related-repository inputs accept 200. The tool schema and description expose the remaining field limits and supported values (`confidence: 'high'`, optional `proposalType: 'verifier_check'`).
 

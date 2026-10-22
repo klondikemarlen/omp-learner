@@ -245,7 +245,7 @@ try {
   assert.match(ticketText, /merged/i, 'Proposal should identify relevant workflow inputs.');
   assert.match(ticketText, /impact|outcome/i, 'Proposal should identify the intended result.');
   assert.match(ticketText, /approval|review/i, 'Proposal should preserve human approval boundaries.');
-  assert.match(reportsFor(recurring)[0].result.content[0].text, /not_covered guidance_coverage:/);
+  assert.match(reportsFor(recurring)[0].result.content[0].text, /^Improvement ticket created\n/);
   assert.equal(recurring.advisorCalls.filter((call) => call.name === 'advise').length, 1, 'Missing-workflow result should reach the native Learner reporter.');
   assert.equal(recurring.advisorCalls.find((call) => call.name === 'advise').arguments.note, reportsFor(recurring)[0].result.content[0].text);
   assert.deepEqual(recurring.deliveredNotes, [recurringReports[0].result.content[0].text], 'The primary session must receive exactly the observed missing-workflow report.');

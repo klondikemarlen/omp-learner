@@ -151,7 +151,7 @@ try {
   assert.equal(coverageReports[0].turn, 6);
   assert.equal(coverageReports[0].outcome, 'not_covered', 'The new, genuinely distinct related correction must remain eligible for capture.');
   assert.match(coverageReports[0].evidence, /current-guidance\.md/);
-  assert.match(reportCalls.find((record) => record.turn === 6).result.content[0].text, /not_covered guidance_coverage:/);
+  assert.match(reportCalls.find((record) => record.turn === 6).result.content[0].text, /^Improvement ticket created\n/);
 
   assert.equal(reportCalls.filter((record) => record.turn === 1).length, 0, 'An already-covered human correction must not invoke the formatter.');
   assert.deepEqual(advisorCalls.filter((call) => call.turn === 1 && ['advise', 'learn'].includes(call.name)), [], 'An already-covered correction must not deliver a no-action note or store redundant memory.');
@@ -172,6 +172,7 @@ try {
 
   const advice = advisorCalls.filter((call) => call.turn === 6 && call.name === 'advise');
   const report = reportCalls.find((record) => record.turn === 6);
+  assert.equal(report.result.content[0].text, `Improvement ticket created\n${newTicket.params.title}\n  ${newTicket.result.details.url}`, 'The delivered notification must contain only its readable ticket outcome, subject, and actual issue URL.');
   assert.equal(advice.length, 1);
   assert.equal(advice[0].arguments.note, report.result.content[0].text);
   assert.ok(advice[0].arguments.severity === undefined || advice[0].arguments.severity === 'nit');

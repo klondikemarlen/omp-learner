@@ -84,7 +84,7 @@ try {
       details: { created: true, url: issueUrl },
     },
     {
-      content: [{ type: 'text', text: `created learner_file_ticket: ${ticket.title}\n  ${issueUrl}` }],
+      content: [{ type: 'text', text: `Improvement ticket created\n${ticket.title}\n  ${issueUrl}` }],
       details: { records: [{ operation: 'learner_file_ticket', outcome: 'created', subject: ticket.title, evidence: issueUrl }] },
     },
   ]);
@@ -92,7 +92,7 @@ try {
   const reusedOutput = await runGeneratedExamples(action);
   assert.equal(reusedOutput[0].details.created, false);
   assert.equal(reusedOutput[0].details.url, issueUrl);
-  assert.equal(reusedOutput[1].content[0].text, `reused learner_file_ticket: ${ticket.title}\n  ${issueUrl}`);
+  assert.equal(reusedOutput[1].content[0].text, `Improvement ticket reused\n${ticket.title}\n  ${issueUrl}`);
 
   const failingAction = createLearnerTicketTool({
     agentDir,

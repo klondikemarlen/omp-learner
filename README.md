@@ -76,9 +76,13 @@ Explicit user advisor overrides are preserved. An override must include `eval` t
 
 ### Guidance lifecycle
 
-Learner uses the same agent-owned guidance model as the installed `omp-verifier`: the marked roster imports `learner/WATCHDOG.md` from the active agent directory, not a package path. This keeps guidance tied to its configuration and lets both advisors preserve each other's marked roster blocks.
+The default policy is maintained as [`omp-plugin/learner/WATCHDOG.md`](omp-plugin/learner/WATCHDOG.md), not embedded in JavaScript. The native roster still imports the managed `learner/WATCHDOG.md` in the active agent directory, keeping the rendered policy tied to its configuration and preserving other advisors' marked roster blocks.
 
-Setup and the next session after a reinstall refresh the generated guidance. `/learner off` removes Learner's marked roster entry and recognizable guidance file, keeps the disabled agent-owned configuration for status and re-enablement, and preserves unrelated agent configuration.
+To replace the policy, run `/learner setup`, then copy the packaged Markdown to `<agent-dir>/learner/WATCHDOG.override.md` and edit that file. The default override location is `~/.omp/agent/learner/WATCHDOG.override.md`; use the actual agent directory if OMP is configured differently. This is a **full replacement**, not an appended supplement: start with the packaged default if you want to retain its classification and safety guidance. `{{KNOWLEDGE_BASE_REPOSITORY}}` is replaced with the configured shared destination in either source; unrelated text is left literal. The override changes advisor instructions, not native tool approval or ticket-destination validation.
+
+Run `/learner setup` again to render edits, then start a fresh OMP session to consume them. Enabled-session reconciliation also renders the selected source. Setup, reinstall, off, and re-enablement never overwrite or remove `WATCHDOG.override.md`. Removing that file restores the current packaged default on the next setup/reconciliation; an empty file intentionally supplies an empty policy. An override read error is surfaced rather than silently falling back to the default.
+
+Do not edit the managed `learner/WATCHDOG.md`: it is regenerated and marked as output. `/learner off` removes Learner's marked roster entry and recognizable generated output, retains disabled configuration and the override, and preserves unrelated agent configuration and unrecognized user-owned notes.
 
 ## Commands
 

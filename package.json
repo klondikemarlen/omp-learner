@@ -1,10 +1,10 @@
 {
   "name": "omp-learner",
-  "version": "2.12.0",
+  "version": "2.13.0",
   "description": "OMP advisor that identifies and classifies learning for shared guidance and supplied-verifier integration.",
   "type": "module",
   "scripts": {
-    "test": "node scripts/verify-learning-reports.mjs && node scripts/verify-learner.mjs && node scripts/verify-ticket-boundaries.mjs && node scripts/verify-eval-transport.mjs && node scripts/verify-source-window.mjs"
+    "test": "node scripts/verify-learning-reports.mjs && node scripts/verify-learner.mjs && node scripts/verify-ticket-boundaries.mjs && node scripts/verify-eval-transport.mjs && node scripts/verify-source-window.mjs && node scripts/verify-guidance.test.mjs"
   },
   "repository": {
     "type": "git",

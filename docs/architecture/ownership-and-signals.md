@@ -44,6 +44,14 @@ Suppress another guidance proposal when the same practical behavior at the same 
 
 **Example — needless helper extraction:** A human corrects an account-summary presenter that extracted `accountName(account)` only to return `account.name`, with no separate formatting policy or meaningful responsibility. Learner finds the equivalent [module-boundary rule](https://github.com/klondikemarlen/marlens-skills-rules-and-tools/blob/main/docs/references/code-organization-reference.md#module-decomposition) already tracked and stays silent, even if the helper still violates that rule. Verifier separately evaluates the changed presenter and helper against the applicable supplied contract and current context. This illustrates the ownership boundary, not an observed verification result or an automatic handoff from Learner.
 
+### Evidence-Backed Correction Principles
+
+For an eligible correction, Learner identifies the smallest principle supported by its source: the failure mechanism being prevented, required behavior, evidenced scope, and a legitimate neighboring operation that remains allowed. An API name is an example rather than a scope boundary when the rationale supports the same mechanism elsewhere. If the cause or scope is unresolved, Learner retains the concrete correction and uncertainty instead of inventing an explanation or silently activating broader policy.
+
+Missing-guidance proposals express the principle in their title, requested behavior, and completion criteria, with source evidence, rationale, meaningful limits, and a concrete example. Adding abstract rationale to an otherwise API-specific prohibition is not enough. Coverage and open-proposal review compare the mechanism, required contract, and scope within the existing lookup budget. Equivalent released principles suppress proposals silently; equivalent pending proposals use normal issue reuse rather than becoming released coverage. Later examples stay handled only when the earlier proposal actually covers their contract; shared terminology does not erase a materially different requirement.
+
+For example, factory-generated expectations and a helper copying the protected production algorithm can share correlated errors that conceal a defect. Independently specified expected outcomes address that mechanism without a new prohibition for every factory, serializer, or helper. Keeping fixture construction in Arrange also separates setup failures from contract failures, a related but distinct concern. Neither principle bans persistence-observation queries, supported matchers, intentional rejection assertions, or simple result access in Assert. More abstract wording never broadens an expressly project-local preference into shared policy.
+
 Keep these outcomes separate:
 
 1. **Covered guidance:** Equivalent released guidance at the same scope suppresses a duplicate proposal silently. It is not a user-facing learning result, a filed proposal, or a verification result.

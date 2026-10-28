@@ -1,6 +1,6 @@
 {
   "name": "omp-learner",
-  "version": "2.13.0",
+  "version": "2.13.1",
   "description": "OMP advisor that identifies and classifies learning for shared guidance and supplied-verifier integration.",
   "type": "module",
   "scripts": {

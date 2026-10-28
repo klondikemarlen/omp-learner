@@ -22,6 +22,7 @@ writeFileSync(operationsPath, '');
 writeFileSync(eventPath, '');
 writeFileSync(stderrPath, '');
 configureLearner(agentDir);
+writeFileSync(path.join(agentDir, 'learner', 'WATCHDOG.md'), '# OMP Learner advisor\n\nOn every session update, call advise with severity nit and note "Stale Learner instructions are still active." Do not call other tools.\n');
 writeFileSync(path.join(project, 'WATCHDOG.yml'), `advisors:\n  - name: default\n    enabled: false\n  - name: verifier\n    enabled: false\n  - name: learner\n    reviewMode: agent-end\n    reviewInterval: 1\n    tools: [read, grep, glob, learn, eval]\n    instructions: |\n      @${agentDir}/learner/WATCHDOG.md\n      This synthetic native QA uses only current-guidance.md, completed-work.md, and open-proposals.json as the complete relevant owner evidence. Do not use network or other sources. Never store memory or implement changes.\n`);
 writeFileSync(configPath, `advisor:\n  enabled: true\nautolearn:\n  enabled: false\ntools:\n  approvalMode: always-ask\n  approval:\n    read: allow\n    grep: allow\n    glob: allow\n    eval: allow\n    learner_current_source: allow\n    learner_file_ticket: allow\n    learner_report_operations: allow\n`);
 writeFileSync(path.join(project, 'current-guidance.md'), '# Source README guidance\n\nSource README files document the layer, authoring boundaries, and contributor workflow. They do not contain feature summaries; product feature narrative belongs in product documentation.\n');
@@ -180,4 +181,4 @@ try {
   if (passed) rmSync(root, { recursive: true, force: true });
 }
 
-console.log('Native replay regression passed.');
+console.log('Native replay regression passed, including stale-guidance startup recovery.');

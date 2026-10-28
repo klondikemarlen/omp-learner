@@ -82,6 +82,8 @@ To replace the policy, run `/learner setup`, then copy the packaged Markdown to 
 
 Run `/learner setup` again to render edits, then start a fresh OMP session to consume them. Enabled-session reconciliation also renders the selected source. Setup, reinstall, off, and re-enablement never overwrite or remove `WATCHDOG.override.md`. Removing that file restores the current packaged default on the next setup/reconciliation; an empty file intentionally supplies an empty policy. An override read error is surfaced rather than silently falling back to the default.
 
+If generated guidance stays stale after reinstalling, run `/learner setup` **without a repository argument**, then restart OMP. This re-renders the installed default or preserved override without changing the configured destination. In OMP 18.13.3, [`/reload-plugins`](https://github.com/can1357/oh-my-pi/blob/v18.13.3/packages/coding-agent/src/slash-commands/builtin-marketplace.ts#L24-L40) refreshes plugin-related discovery and MCP state, but does not rerun extension factories or `session_start`: its success message does not prove Learner's generated guidance refreshed.
+
 Do not edit the managed `learner/WATCHDOG.md`: it is regenerated and marked as output. `/learner off` removes Learner's marked roster entry and recognizable generated output, retains disabled configuration and the override, and preserves unrelated agent configuration and unrecognized user-owned notes.
 
 ## Commands
@@ -113,6 +115,8 @@ The opt-in multi-turn native replay regression is:
 ```bash
 node scripts/verify-native-replay.mjs
 ```
+
+The replay begins with deliberately stale instructions. Its silence and ticket/report assertions require the native advisor to consume the refreshed current policy, not merely register the command.
 
 It requires OMP installed and authenticated with the normal configured provider/model defaults; it makes multiple live-model calls and is intentionally not part of `npm test`. It verifies silence for an already-covered human correction and ordinary continuation turns, then one actual isolated ticket receipt and delivered report for a genuinely new correction. It creates temporary project/session/config data, uses synthetic owner guidance, and wraps the registered ticket action with isolated GitHub responses so no public issue is created. On failure, its event transcript and observed tool operations remain at the printed `/tmp/omp-learner-native-replay-<pid>.log` path. To exercise an installed package instead of this checkout, set `QA_PACKAGE_DIR` to its installed package root before running the same command.
 

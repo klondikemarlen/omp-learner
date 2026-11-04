@@ -82,7 +82,7 @@ test('when Learner is disabled and re-enabled, the user override and unrelated r
   // Assert
   assert.match(readFileSync(instructionsPath, 'utf8'), /\n# User policy without a Learner heading\nKeep these instructions\.\n$/);
   assert.equal(readFileSync(overridePath, 'utf8'), '# User policy without a Learner heading\nKeep these instructions.\n');
-  assert.match(readFileSync(rosterPath, 'utf8'), /- name: verifier\n    enabled: true/);
+  assert.match(readFileSync(rosterPath, 'utf8'), /- name: verifier\n {4}enabled: true/);
 });
 
 test('when an enabled session starts after an override edit, the advisor receives the edited policy', (t) => {

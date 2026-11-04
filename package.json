@@ -1,9 +1,10 @@
 {
   "name": "omp-learner",
-  "version": "2.13.1",
+  "version": "2.13.2",
   "description": "OMP advisor that identifies and classifies learning for shared guidance and supplied-verifier integration.",
   "type": "module",
   "scripts": {
+    "lint": "eslint . --max-warnings 0",
     "test": "node scripts/verify-learning-reports.mjs && node scripts/verify-learner.mjs && node scripts/verify-ticket-boundaries.mjs && node scripts/verify-eval-transport.mjs && node scripts/verify-source-window.mjs && node scripts/verify-guidance.test.mjs"
   },
   "repository": {
@@ -20,5 +21,11 @@
   },
   "pi": {
     "extensions": ["./omp-plugin/index.ts"]
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "typescript-eslint": "^8.72.1"
   }
 }

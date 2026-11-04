@@ -84,6 +84,14 @@ const prompts = [
   'Review the completed work before your final answer.',
   'Check the final answer once more.',
   'Correction: source README examples should put contributor commands before their rationale, while keeping product feature summaries in product docs. Do not implement or store memory.',
+  'We are comparing a broad test-fixture migration with a smaller alternative. I think I want to reduce the scope, and I think I want the default to be db tests: keep ordinary test for the default resource scope rather than making every test use a special wrapper. Maybe you could make a better case? Run a smaller and better test selection to prove the reduced test scope.',
+  'Run any experiments you need and rethink this PR stack. Compare whole-suite speed and GitHub credit burn before we choose the test API. Keep ordinary test for the default scope as the candidate under evaluation.',
+  'The experiments support the smaller design. I now adopt this as my reusable testing convention: keep the ordinary test API for the default resource scope and use explicit wrappers only for exceptional scopes. This is a decided preference for future projects, not another experiment.',
+  'For the still-unfinished migration, maybe every fixture should be declared in one global catalog so setup is easier to find. Compare that with local fixture declarations before we decide.',
+  'I reject the global fixture catalog candidate. Do not adopt or propose it as a shared convention. Continue evaluating the migration without that candidate.',
+  'Continue the migration investigation and summarize the remaining experiments.',
+  'The migration design is still unresolved. Separately, a firm reusable correction: performance comparisons must show the baseline and candidate measured over the same workload, so the reported difference is meaningful. Apply that standard now and in future work; do not wait for this investigation to finish.',
+  'Please file a tentative shared-guidance proposal to evaluate whether a one-page decision log would help compare migration alternatives. This is explicitly a request to track an experiment, not adoption of a reusable convention. Done means compare the decision log against the current approach and record a decision, not mandate it as policy.',
 ];
 const advisorCalls = [];
 const seenAdvisorCalls = new Set();
@@ -149,27 +157,41 @@ try {
   assert.equal(reportCalls.filter((record) => record.turn === 1).length, 0, 'An already-covered human correction must not invoke the formatter.');
   assert.deepEqual(advisorCalls.filter((call) => call.turn === 1 && ['advise', 'learn'].includes(call.name)), [], 'An already-covered correction must not deliver a no-action note or store redundant memory.');
 
-  for (const index of [1, 2, 3, 4]) {
+  for (const index of [1, 2, 3, 4, 6, 7, 9, 10, 11]) {
     assert.deepEqual(advisorCalls.filter((call) => call.turn === index + 1 && call.name !== 'eval'), [], `Turn ${index + 1} may only inspect authoritative source, never replay coverage/actions/notes.`);
     assert.equal(reportCalls.filter((record) => record.turn === index + 1).length, 0, `Turn ${index + 1} must not invoke the Learner reporter.`);
     assert.ok(operations.filter((record) => record.turn === index + 1).every((record) => record.tool === 'learner_current_source'), 'Ordinary turns may only inspect source, not perform capture or reporting.');
   }
 
   const githubActions = operations.filter((record) => record.isolatedGithubAction);
-  assert.equal(githubActions.filter((record) => record.isolatedGithubAction[1] === 'create').length, 1, 'Only the fresh correction may create a proposal.');
-  assert.ok(githubActions.every((record) => record.turn === 6), 'No earlier replay may attempt a ticket action.');
+  const eligibleTurns = [6, 9, 13, 14];
+  assert.equal(githubActions.filter((record) => record.isolatedGithubAction[1] === 'create').length, eligibleTurns.length, 'Only fresh corrections, explicit adoption, and the requested tentative proposal may create tickets.');
+  assert.ok(githubActions.every((record) => eligibleTurns.includes(record.turn)), 'Unresolved and rejected candidates must not attempt ticket actions.');
 
-  const newTicket = operations.find((record) => record.tool === 'learner_file_ticket' && record.turn === 6);
-  assert.equal(newTicket.result.details.created, true, 'New correction should produce the actual isolated ticket action result.');
-  assert.equal(newTicket.result.details.url, 'https://github.com/klondikemarlen/marlens-skills-rules-and-tools/issues/999999');
+  const expectedNotes = [];
+  for (const turn of eligibleTurns) {
+    const tickets = operations.filter((record) => record.tool === 'learner_file_ticket' && record.turn === turn);
+    assert.equal(tickets.length, 1, `Eligible turn ${turn} should file exactly one proposal.`);
+    const ticket = tickets[0];
+    assert.equal(ticket.result.details.created, true, 'Eligible signal should produce the actual isolated ticket action result.');
+    assert.equal(ticket.result.details.url, 'https://github.com/klondikemarlen/marlens-skills-rules-and-tools/issues/999999');
 
-  const advice = advisorCalls.filter((call) => call.turn === 6 && call.name === 'advise');
-  const report = reportCalls.find((record) => record.turn === 6);
-  assert.equal(report.result.content[0].text, `Improvement ticket created\n${newTicket.params.title}\n  ${newTicket.result.details.url}`, 'The delivered notification must contain only its readable ticket outcome, subject, and actual issue URL.');
-  assert.equal(advice.length, 1);
-  assert.equal(advice[0].arguments.note, report.result.content[0].text);
-  assert.ok(advice[0].arguments.severity === undefined || advice[0].arguments.severity === 'nit');
-  assert.deepEqual(deliveredNotes, [report.result.content[0].text], 'Only the genuinely missing correction may deliver an improvement-ticket report to the primary session.');
+    const advice = advisorCalls.filter((call) => call.turn === turn && call.name === 'advise');
+    const reports = reportCalls.filter((record) => record.turn === turn);
+    assert.equal(reports.length, 1);
+    const notification = reports[0].result.content[0].text;
+    assert.equal(notification, `Improvement ticket created\n${ticket.params.title}\n  ${ticket.result.details.url}`, 'The notification must contain only its readable ticket outcome, subject, and actual issue URL.');
+    assert.equal(advice.length, 1);
+    assert.equal(advice[0].arguments.note, notification);
+    assert.ok(advice[0].arguments.severity === undefined || advice[0].arguments.severity === 'nit');
+    expectedNotes.push(notification);
+    console.log(`Turn ${turn} proposal: ${JSON.stringify(ticket.params)}`);
+  }
+  assert.deepEqual(deliveredNotes, expectedNotes, 'Only eligible current signals may deliver improvement-ticket reports.');
+  assert.deepEqual(advisorCalls.filter((call) => call.name === 'learn'), [], 'The replay must not capture tentative candidates as durable memory.');
+  for (let turn = 1; turn <= prompts.length; turn += 1) {
+    assert.ok(operations.some((record) => record.turn === turn && record.tool === 'learner_current_source'), `Turn ${turn} must inspect authoritative source; an absent advisor is not silence proof.`);
+  }
 
   passed = true;
 } catch (error) {
@@ -181,4 +203,4 @@ try {
   if (passed) rmSync(root, { recursive: true, force: true });
 }
 
-console.log('Native replay regression passed, including stale-guidance startup recovery.');
+console.log('Native replay passed: stale-guidance recovery, covered/ordinary/unresolved/rejected silence, explicit adoption, unfinished-work correction, and requested tentative proposal. Review the printed proposal content for decision status and scope.');

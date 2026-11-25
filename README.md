@@ -20,6 +20,8 @@ Exploratory preferences and requests for experiments stay task-local while the d
 
 Learner derives [evidence-backed principles](docs/architecture/ownership-and-signals.md#evidence-backed-correction-principles) from corrections before matching guidance or proposing changes. Proposals lead with the smallest supported failure-prevention contract, using API-specific corrections as examples rather than accumulating narrow prohibitions. Causal uncertainty and expressly project-local scope remain explicit; a more abstract principle does not authorize broader policy.
 
+A correction can show where a useful default stops applying. Learner compares the selected example and related recent corrections against the actual rule: if the rule discourages a justified alternative, it proposes a narrow amendment that keeps the default. If the rule already allows both choices, or the user requested only an isolated edit, there is no new guidance to file.
+
 A preference first expressed while working in one named repository is not automatically project-specific. Reusable learning routes to the shared guidance owner; only expressly project-limited or domain/schema/implementation-dependent corrections route to the active project. Routine facts such as service addresses, schema descriptions, terminology, and operational notes are context, not automatic ticket or memory actions. They belong in the owning project's documentation or memory, never in Learner as a collection of unrelated project knowledge. Learner's own [maintainer docs](docs/README.md) describe only this plugin and its integration boundaries.
 
 Before eligibility review, `learner_current_source` reads the latest real user message and last delivered Learner report from the native primary-session branch, plus bounded recent prompts and Learner reports for recurring-intent evidence and handled-pattern suppression. This avoids mistaking historical user blocks replayed during advisor startup/resume for current feedback. Source-only inspection is not a learning report. The advisor compares current intent with the reports; a delayed report alone must not suppress genuinely new learning or materially new coverage evidence. One-off questions and requests, repeated final-yield reviews, another instance of a handled workflow, and changed report wording do not reopen handled learning. Standing verification intent remains context for fresh corrections. Unavailable required sources yield `incomplete`, not an invented coverage claim.
@@ -118,6 +120,7 @@ The opt-in multi-turn native replay regression is:
 
 ```bash
 node scripts/verify-native-replay.mjs
+node scripts/verify-native-replay.mjs --rule-refinement
 ```
 
 The replay begins with deliberately stale instructions. Its silence and ticket/report assertions require the native advisor to consume the refreshed current policy, not merely register the command.

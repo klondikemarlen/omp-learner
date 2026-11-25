@@ -25,7 +25,12 @@ configureLearner(agentDir);
 writeFileSync(path.join(agentDir, 'learner', 'WATCHDOG.md'), '# OMP Learner advisor\n\nOn every session update, call advise with severity nit and note "Stale Learner instructions are still active." Do not call other tools.\n');
 writeFileSync(path.join(project, 'WATCHDOG.yml'), `advisors:\n  - name: default\n    enabled: false\n  - name: verifier\n    enabled: false\n  - name: learner\n    reviewMode: agent-end\n    reviewInterval: 1\n    tools: [read, grep, glob, learn, eval]\n    instructions: |\n      @${agentDir}/learner/WATCHDOG.md\n      This synthetic native QA uses only current-guidance.md, completed-work.md, and open-proposals.json as the complete relevant owner evidence. Do not use network or other sources. Never store memory or implement changes.\n`);
 writeFileSync(configPath, `advisor:\n  enabled: true\nautolearn:\n  enabled: false\ntools:\n  approvalMode: always-ask\n  approval:\n    read: allow\n    grep: allow\n    glob: allow\n    eval: allow\n    learner_current_source: allow\n    learner_file_ticket: allow\n    learner_report_operations: allow\n`);
-writeFileSync(path.join(project, 'current-guidance.md'), '# Source README guidance\n\nSource README files document the layer, authoring boundaries, and contributor workflow. They do not contain feature summaries; product feature narrative belongs in product documentation.\n');
+const ruleRefinement = process.argv.includes('--rule-refinement');
+// MSSRT code-organization-reference.md, “Simple Construction and Values”, at 422186577f55.
+const guidance = ruleRefinement
+  ? 'Keep simple single-field object type annotations and object arguments inline when they fit readably: `const response: { id: string } = await request()` and `logger.error(message, { error })`. Wrap a long surrounding request chain independently; the small shape need not expand with it. Retain multiline complex shapes, test expectations, and stronger project conventions.'
+  : 'Source README files document the layer, authoring boundaries, and contributor workflow. They do not contain feature summaries; product feature narrative belongs in product documentation.';
+writeFileSync(path.join(project, 'current-guidance.md'), `# Current shared guidance\n\n${guidance}\n`);
 writeFileSync(path.join(project, 'completed-work.md'), '# Completed work\n\nNo other relevant release records.\n');
 writeFileSync(path.join(project, 'open-proposals.json'), '[]\n');
 writeFileSync(path.join(wrapperPath), `import { appendFileSync } from 'node:fs';
@@ -77,7 +82,12 @@ export default function extension(pi) {
 }
 `);
 
-const prompts = [
+const prompts = ruleRefinement ? [
+  'Logging call: `logger.error(message, { error })` — keep `{ error }` inline.',
+  'restore-controller.ts: `return this.response.status(422).json({ message: "Failed to restore SharePoint file." })`\n\nwrap line.',
+  'recycle-bin-files-controller.ts: `return this.response.status(400).json({ message: "Failed to list deleted SharePoint files." })`\n\nwrap this line.',
+  'Preview only: move the title below the screenshot for this slide. Nothing to change elsewhere.',
+] : [
   'Correction: Source README files should document the layer and authoring boundaries, not feature summaries. This is a durable reusable documentation correction; compare current guidance and report the observed coverage. Do not implement or store memory.',
   'Do we still need ordering here?',
   'Please move this checkout to the requested worktree.',
@@ -154,18 +164,24 @@ try {
   const operations = readFileSync(operationsPath, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line));
   const reportCalls = operations.filter((record) => record.tool === 'learner_report_operations');
 
-  assert.equal(reportCalls.filter((record) => record.turn === 1).length, 0, 'An already-covered human correction must not invoke the formatter.');
-  assert.deepEqual(advisorCalls.filter((call) => call.turn === 1 && ['advise', 'learn'].includes(call.name)), [], 'An already-covered correction must not deliver a no-action note or store redundant memory.');
+  assert.equal(reportCalls.filter((record) => record.turn === 1).length, 0, 'A covered correction must not invoke the formatter.');
+  assert.deepEqual(advisorCalls.filter((call) => call.turn === 1 && ['advise', 'learn'].includes(call.name)), [], 'A covered correction must not notify or store redundant memory.');
 
-  for (const index of [1, 2, 3, 4, 6, 7, 9, 10, 11]) {
+  const sourceOnlyIndexes = ruleRefinement ? [3] : [1, 2, 3, 4, 6, 7, 9, 10, 11];
+  for (const index of sourceOnlyIndexes) {
     assert.deepEqual(advisorCalls.filter((call) => call.turn === index + 1 && call.name !== 'eval'), [], `Turn ${index + 1} may only inspect authoritative source, never replay coverage/actions/notes.`);
     assert.equal(reportCalls.filter((record) => record.turn === index + 1).length, 0, `Turn ${index + 1} must not invoke the Learner reporter.`);
     assert.ok(operations.filter((record) => record.turn === index + 1).every((record) => record.tool === 'learner_current_source'), 'Ordinary turns may only inspect source, not perform capture or reporting.');
   }
 
   const githubActions = operations.filter((record) => record.isolatedGithubAction);
-  const eligibleTurns = [6, 9, 13, 14];
-  assert.equal(githubActions.filter((record) => record.isolatedGithubAction[1] === 'create').length, eligibleTurns.length, 'Only fresh corrections, explicit adoption, and the requested tentative proposal may create tickets.');
+  const creations = githubActions.filter((record) => record.isolatedGithubAction[1] === 'create');
+  if (ruleRefinement) {
+    assert.equal(creations.length, 1, 'The two corrections together must produce one proposal.');
+    assert.ok([2, 3].includes(creations[0].turn), 'Only a correction to the long calls can justify an exception.');
+  }
+  const eligibleTurns = ruleRefinement ? [creations[0].turn] : [6, 9, 13, 14];
+  assert.equal(creations.length, eligibleTurns.length, 'Only eligible corrections or requested proposals may create tickets.');
   assert.ok(githubActions.every((record) => eligibleTurns.includes(record.turn)), 'Unresolved and rejected candidates must not attempt ticket actions.');
 
   const expectedNotes = [];
@@ -175,6 +191,12 @@ try {
     const ticket = tickets[0];
     assert.equal(ticket.result.details.created, true, 'Eligible signal should produce the actual isolated ticket action result.');
     assert.equal(ticket.result.details.url, 'https://github.com/klondikemarlen/marlens-skills-rules-and-tools/issues/999999');
+    if (ruleRefinement) {
+      assert.equal(ticket.params.target, 'knowledge_base');
+      assert.equal(ticket.params.proposalType, undefined);
+      assert.match(ticket.params.proposal, /compact|inline|one.line|single.line/i, 'Preserve the useful default.');
+      assert.match(ticket.params.proposal, /wrap|multiline|multi-line|line break/i, 'Allow the corrected alternative.');
+    }
 
     const advice = advisorCalls.filter((call) => call.turn === turn && call.name === 'advise');
     const reports = reportCalls.filter((record) => record.turn === turn);
@@ -203,4 +225,4 @@ try {
   if (passed) rmSync(root, { recursive: true, force: true });
 }
 
-console.log('Native replay passed: stale-guidance recovery, covered/ordinary/unresolved/rejected silence, explicit adoption, unfinished-work correction, and requested tentative proposal. Review the printed proposal content for decision status and scope.');
+console.log('Native replay passed. Review the printed proposal content for decision status and scope.');

@@ -2,7 +2,7 @@ import { type ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import { jsx } from "@oh-my-pi/pi-tui";
 import { registerLearnerPlugin } from "./learner.mjs";
 
-export default function ompLearner(pi: ExtensionAPI) {
+export function ompLearner(pi: ExtensionAPI) {
   pi.setLabel("OMP Learner");
   pi.registerMessageRenderer("learner-status", (message) => {
     if (typeof message.content !== "string") {
@@ -20,3 +20,5 @@ export default function ompLearner(pi: ExtensionAPI) {
 
   registerLearnerPlugin(pi);
 }
+
+export default ompLearner;

@@ -100,7 +100,9 @@ Do not edit the managed `learner/WATCHDOG.md`: it is regenerated and marked as o
 /learner status
 ```
 
-`/learner setup` enables the ticket-first advisor and keeps the current shared destination. Use `/learner setup your-account/knowledge-base` or an HTTPS GitHub repository URL to select your own knowledge base; both shared-guidance and reusable-verifier proposals use it. The default remains `klondikemarlen/marlens-skills-rules-and-tools`. Configuration selects the destination but does not bypass native write approval. `/learner status` shows that destination and the integration/ownership boundaries. `/learner off` removes only Learner's marked entry and preserves verifier configuration and user-owned Learner notes.
+`/learner` and `/learner status` show the loaded Learner version and whether the advisor is configured on or off.
+
+`/learner setup` enables the ticket-first advisor and keeps the current shared destination. Use `/learner setup your-account/knowledge-base` or an HTTPS GitHub repository URL to select your own knowledge base; both shared-guidance and reusable-verifier proposals use it. The default remains `klondikemarlen/marlens-skills-rules-and-tools`. Configuration selects the destination but does not bypass native write approval. `/learner off` removes only Learner's marked entry and preserves verifier configuration and user-owned Learner notes.
 
 ## Release and install verification
 

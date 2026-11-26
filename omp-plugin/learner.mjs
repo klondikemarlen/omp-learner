@@ -1,5 +1,6 @@
+import manifest from '../package.json' with { type: 'json' };
 import { createLearnerTicketTool } from './learner/ticket.mjs';
-import { configurationPath, configureLearner, disableLearner, readConfiguration, resolveAgentDir } from './learner/config.mjs';
+import { configureLearner, disableLearner, readConfiguration, resolveAgentDir } from './learner/config.mjs';
 import { createLearnerReportTool } from './learner/report.mjs';
 import { createLearnerSourceTool } from './learner/source.mjs';
 
@@ -49,8 +50,8 @@ export function registerLearnerPlugin(pi) {
 }
 
 async function handleCommand(pi, args, ctx) {
-  const tokens = args.trim().split(/\s+/).filter(Boolean);
-  const command = tokens[0] || 'status';
+  const tokens = (args.trim() || 'status').split(/\s+/);
+  const [command] = tokens;
   const currentAgentDir = agentDir(pi, ctx);
 
   try {
@@ -82,24 +83,9 @@ async function handleCommand(pi, args, ctx) {
 }
 
 function statusText(currentAgentDir) {
-  const configuration = readConfiguration(currentAgentDir);
-  return [
-    'Learner status:',
-    `advisor: ${configuration.enabled ? 'on' : 'off'}`,
-    'core learning: uses OMP\'s learn tool when autolearn.enabled and a supported memory backend are configured',
-    'purpose: identify and classify learning for shared skills, rules, workflows, and potential supplied verification',
-    'workflow discovery: explicit recurring effort or three matching real prompts in the active branch; propose genuine guidance gaps, stay silent for covered ordinary tasks',
-    'workflow history: bounded to 12 prompts and 8 Learner reports; no automatic cross-session scan or workflow execution',
-    'coaching boundary: post-completion user-effort tips belong to the separate omp-trainer project; no Trainer runtime is enabled by Learner',
-    'feedback handling: reusable learning becomes shared-guidance proposals; project-specific corrections stay with their owner; memory is supplementary',
-    'reporting: improvement-ticket outcomes only; already-covered corrections and tasks stay silent',
-    'knowledge ownership: project facts stay in their owning project; Learner docs and issues concern this plugin',
-    'verification handoff: providers supply checks; Learner proposes integration; omp-verifier discovers and executes',
-    'ticket boundary: configured GitHub knowledge base for shared guidance/checks; active origin for project work; related targets retain their namespace restriction; native approval required',
-    `shared guidance target: ${configuration.knowledgeBaseRepository}`,
-    'shared capture: an issue records a proposal; active cross-project guidance requires review, release, and installation',
-    `configuration: ${configurationPath(currentAgentDir)}`,
-  ].join('\n');
+  const { enabled } = readConfiguration(currentAgentDir);
+  const advisorState = enabled ? 'on' : 'off';
+  return `Learner v${manifest.version} · Advisor ${advisorState}`;
 }
 
 function completeCommand(argumentPrefix) {

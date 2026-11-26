@@ -390,8 +390,9 @@ try {
   readGuard.onToolResult({ toolCallId: 'read-1', isError: false, content: [{ type: 'text', text: 'no changes' }] });
   assert.equal(readGuard.onToolCall({ toolName: 'read', toolCallId: 'read-2', input: { path: 'file' } }), undefined);
 
+  const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   await commands.get('learner').handler('status', { agentDir });
-  assert.match(messages.at(-1).content, /advisor: on/);
+  assert.equal(messages.at(-1).content, `Learner v${version} · Advisor on`);
 
   await commands.get('learner').handler('setup https://github.com/owner/repository.git', { agentDir });
   assert.equal(readConfiguration(agentDir).knowledgeBaseRepository, 'owner/repository');
@@ -443,6 +444,8 @@ try {
   assert.doesNotMatch(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /# omp-learner: begin/);
   assert.match(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /# omp-verifier: advisor begin/);
   assert.ok(existsSync(configurationPath(agentDir)));
+  await commands.get('learner').handler('', { agentDir });
+  assert.equal(messages.at(-1).content, `Learner v${version} · Advisor off`);
   await assert.rejects(() => ticketTool.execute('ticket-6', ticket('knowledge_base', 'Disabled filing'), undefined, undefined, { cwd: '/tmp/project' }), /disabled/);
 } finally {
   rmSync(agentDir, { recursive: true, force: true });

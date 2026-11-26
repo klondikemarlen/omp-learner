@@ -392,7 +392,7 @@ try {
 
   const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   await commands.get('learner').handler('status', { agentDir });
-  assert.equal(messages.at(-1).content, `Learner v${version} · Advisor on`);
+  assert.equal(messages.at(-1).content, `Version: v${version}\nAdvisor: on`);
 
   await commands.get('learner').handler('setup https://github.com/owner/repository.git', { agentDir });
   assert.equal(readConfiguration(agentDir).knowledgeBaseRepository, 'owner/repository');
@@ -445,7 +445,7 @@ try {
   assert.match(readFileSync(path.join(agentDir, 'WATCHDOG.yml'), 'utf8'), /# omp-verifier: advisor begin/);
   assert.ok(existsSync(configurationPath(agentDir)));
   await commands.get('learner').handler('', { agentDir });
-  assert.equal(messages.at(-1).content, `Learner v${version} · Advisor off`);
+  assert.equal(messages.at(-1).content, `Version: v${version}\nAdvisor: off`);
   await assert.rejects(() => ticketTool.execute('ticket-6', ticket('knowledge_base', 'Disabled filing'), undefined, undefined, { cwd: '/tmp/project' }), /disabled/);
 } finally {
   rmSync(agentDir, { recursive: true, force: true });

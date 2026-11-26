@@ -75,7 +75,10 @@ async function handleCommand(pi, args, ctx) {
       return display(pi, 'Learner advisor disabled.');
     }
 
-    if (command === 'status' && tokens.length === 1) return display(pi, statusText(currentAgentDir));
+    if (command === 'status' && tokens.length === 1) {
+      return display(pi, statusText(currentAgentDir), 'learner-status');
+    }
+
     return display(pi, 'Usage: /learner setup [owner/repository] | off | status');
   } catch (error) {
     return display(pi, `Learner setup failed: ${error.message}`);
@@ -85,7 +88,7 @@ async function handleCommand(pi, args, ctx) {
 function statusText(currentAgentDir) {
   const { enabled } = readConfiguration(currentAgentDir);
   const advisorState = enabled ? 'on' : 'off';
-  return `Learner v${manifest.version} · Advisor ${advisorState}`;
+  return `Version: v${manifest.version}\nAdvisor: ${advisorState}`;
 }
 
 function completeCommand(argumentPrefix) {
@@ -93,8 +96,15 @@ function completeCommand(argumentPrefix) {
   return COMMANDS.filter((command) => command.startsWith(argumentPrefix.toLowerCase())).map((command) => ({ value: `${command} `, label: command }));
 }
 
-function display(pi, content) {
-  return pi.sendMessage?.({ customType: 'learner', content, display: true, attribution: 'system' }, { deliverAs: 'followUp' });
+function display(pi, content, customType = 'learner') {
+  return pi.sendMessage?.({
+    customType,
+    content,
+    display: true,
+    attribution: 'system',
+  }, {
+    deliverAs: 'followUp',
+  });
 }
 
 function agentDir(pi, ctx) {

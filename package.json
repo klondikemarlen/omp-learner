@@ -1,6 +1,6 @@
 {
   "name": "omp-learner",
-  "version": "2.13.4",
+  "version": "2.14.0",
   "description": "OMP advisor that identifies and classifies learning for shared guidance and supplied-verifier integration.",
   "type": "module",
   "scripts": {
@@ -14,13 +14,16 @@
   "keywords": ["omp-plugin", "learner"],
   "files": [
     "omp-plugin/",
-    "scripts/"
+    "scripts/",
+    "skills/"
   ],
   "omp": {
-    "extensions": ["./omp-plugin/index.ts"]
+    "extensions": ["./omp-plugin/index.ts"],
+    "skills": ["./skills"]
   },
   "pi": {
-    "extensions": ["./omp-plugin/index.ts"]
+    "extensions": ["./omp-plugin/index.ts"],
+    "skills": ["./skills"]
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
